@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navbar } from "../components/Navbar";
 import { TransactionHistory } from "../components/TransactionHistory";
 import { motion } from "framer-motion";
-import { Download, Filter } from "lucide-react";
+import { Download } from "lucide-react";
 import { getUser } from "../services/storage";
 
 const TransactionsPage: React.FC = () => {
