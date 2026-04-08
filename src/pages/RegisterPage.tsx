@@ -42,7 +42,9 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+    if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)
+    ) {
       setError("Please enter a valid email address");
       setLoading(false);
       return;
@@ -100,24 +102,28 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="border-b border-gray-700 py-6"
+        className="border-b border-gray-200 dark:border-gray-700 py-6"
       >
         <div className="container-max flex items-center gap-4">
           <button
             onClick={() => navigate("/")}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
-            <ChevronLeft size={24} className="text-white" />
+            <ChevronLeft size={24} className="text-gray-900 dark:text-white" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Create Account</h1>
-            <p className="text-gray-400 text-sm">Join PesoLend and get instant access</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Create Account
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Join PesoLend and get instant access
+            </p>
           </div>
         </div>
       </motion.div>
@@ -137,7 +143,9 @@ const RegisterPage: React.FC = () => {
                 <span className="text-3xl font-bold text-gray-900">₱</span>
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-white">PesoLend</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+              PesoLend
+            </h2>
           </div>
 
           {/* Success Message */}
@@ -145,7 +153,7 @@ const RegisterPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="bg-green-900 border border-green-700 text-green-200 px-4 py-3 rounded-lg text-sm"
+              className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg text-sm"
             >
               Account created successfully! Redirecting to login...
             </motion.div>
@@ -156,7 +164,7 @@ const RegisterPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-sm"
+              className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg text-sm"
             >
               {error}
             </motion.div>
@@ -166,7 +174,7 @@ const RegisterPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name */}
             <div>
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-gray-900 dark:text-white font-semibold mb-2">
                 Full Name
               </label>
               <input
@@ -182,7 +190,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Email */}
             <div>
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-gray-900 dark:text-white font-semibold mb-2">
                 Email Address
               </label>
               <input
@@ -198,7 +206,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Phone */}
             <div>
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-gray-900 dark:text-white font-semibold mb-2">
                 Phone Number
               </label>
               <input
@@ -214,7 +222,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-gray-900 dark:text-white font-semibold mb-2">
                 Password
               </label>
               <div className="relative">
@@ -230,7 +238,7 @@ const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -239,7 +247,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-gray-900 dark:text-white font-semibold mb-2">
                 Confirm Password
               </label>
               <div className="relative">
@@ -255,9 +263,13 @@ const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
                 </button>
               </div>
             </div>
@@ -275,12 +287,12 @@ const RegisterPage: React.FC = () => {
           </form>
 
           {/* Login Link */}
-          <div className="text-center pt-4 border-t border-gray-700">
-            <p className="text-gray-400">
+          <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-gray-600 dark:text-gray-400">
               Already have an account?{" "}
               <button
                 onClick={() => navigate("/login")}
-                className="text-orange-500 hover:text-orange-400 font-semibold transition-colors"
+                className="text-amber-500 hover:text-amber-400 font-semibold transition-colors"
               >
                 Sign In
               </button>

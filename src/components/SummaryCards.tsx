@@ -57,8 +57,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       <DashboardCard
         title="Active Loans"
         value={activeLoans}
-        icon={<TrendingUp size={32} className="text-orange-600" />}
-        color="bg-orange-100 dark:bg-orange-900"
+        icon={<TrendingUp size={32} className="text-amber-600" />}
+        color="bg-amber-100 dark:bg-amber-900"
         delay={0.1}
       />
       <DashboardCard

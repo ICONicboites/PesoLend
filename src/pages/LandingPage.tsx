@@ -24,7 +24,7 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col pb-20">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col pb-20 transition-colors duration-200">
       {/* Container */}
       <div className="container-max flex-1 flex flex-col justify-center py-20">
         {/* Logo Section */}
@@ -39,8 +39,10 @@ const LandingPage: React.FC = () => {
               <span className="text-4xl font-bold text-gray-900">₱</span>
             </div>
           </div>
-          <h1 className="text-5xl font-bold text-white mb-6">PesoLend</h1>
-          <p className="text-gray-300 text-xl max-w-lg mx-auto leading-relaxed">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
+            PesoLend
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 text-xl max-w-lg mx-auto leading-relaxed">
             Fast, secure cash and flexible lending. Get the funds you need with
             flexible repayment terms.
           </p>
@@ -61,19 +63,21 @@ const LandingPage: React.FC = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
-                className="flex items-center gap-4 p-5 bg-gray-800 rounded-lg border border-gray-700 hover:border-orange-500 transition-colors"
+                className="flex items-center gap-4 p-5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-amber-500 transition-colors"
               >
                 <CheckCircle
                   size={24}
                   className="text-green-500 flex-shrink-0"
                 />
                 <div className="flex-1">
-                  <p className="text-white font-bold text-lg">
+                  <p className="text-gray-900 dark:text-white font-bold text-lg">
                     {feature.title}
                   </p>
-                  <p className="text-gray-400">{feature.subtitle}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {feature.subtitle}
+                  </p>
                 </div>
-                <Icon size={28} className="text-orange-500 flex-shrink-0" />
+                <Icon size={28} className="text-amber-500 flex-shrink-0" />
               </motion.div>
             );
           })}
@@ -106,7 +110,7 @@ const LandingPage: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.8 }}
-        className="text-center py-6 text-gray-500 text-sm border-t border-gray-700"
+        className="text-center py-6 text-gray-500 text-sm border-t border-gray-200 dark:border-gray-700"
       >
         <p>&copy; 2024 PesoLend. All rights reserved.</p>
       </motion.div>

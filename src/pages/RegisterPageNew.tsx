@@ -43,7 +43,9 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+    if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)
+    ) {
       setError("Please enter a valid email address");
       setLoading(false);
       return;
@@ -120,7 +122,9 @@ const RegisterPage: React.FC = () => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">Create Account</h1>
-            <p className="text-gray-400 text-sm">Join PesoLend and get instant access</p>
+            <p className="text-gray-400 text-sm">
+              Join PesoLend and get instant access
+            </p>
           </div>
         </div>
       </motion.div>
@@ -260,7 +264,11 @@ const RegisterPage: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
                 </button>
               </div>
             </div>
@@ -283,7 +291,7 @@ const RegisterPage: React.FC = () => {
               Already have an account?{" "}
               <button
                 onClick={() => navigate("/login")}
-                className="text-orange-500 hover:text-orange-400 font-semibold transition-colors"
+                className="text-amber-500 hover:text-amber-400 font-semibold transition-colors"
               >
                 Sign In
               </button>

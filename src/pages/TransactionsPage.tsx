@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navbar } from "../components/Navbar";
 import { TransactionHistory } from "../components/TransactionHistory";
+import { BottomNavigation } from "../components/BottomNavigation";
 import { motion } from "framer-motion";
 import { Download } from "lucide-react";
 import { getUser } from "../services/storage";
@@ -12,7 +13,7 @@ const TransactionsPage: React.FC = () => {
   >("All");
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32">
       <Navbar userName={user?.name} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -67,7 +68,7 @@ const TransactionsPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <TransactionHistory />
+          <TransactionHistory filterType={filterType} />
         </motion.div>
 
         {/* Quick Stats */}
@@ -99,6 +100,8 @@ const TransactionsPage: React.FC = () => {
           </div>
         </motion.div>
       </div>
+
+      <BottomNavigation />
     </div>
   );
 };

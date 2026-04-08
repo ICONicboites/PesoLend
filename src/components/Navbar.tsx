@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, Moon, Sun } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getDarkMode, setDarkMode, clearUser } from "../services/storage";
 
 interface NavbarProps {
   userName?: string;
@@ -11,18 +10,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ userName }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [isDark, setIsDark] = useState(getDarkMode());
-
-  const handleLogout = () => {
-    clearUser();
-    navigate("/");
-  };
-
-  const toggleDarkMode = () => {
-    const newMode = !isDark;
-    setIsDark(newMode);
-    setDarkMode(newMode);
-  };
 
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-40 transition-colors duration-200">
@@ -44,47 +31,17 @@ export const Navbar: React.FC<NavbarProps> = ({ userName }) => {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-4">
             {userName && (
-              <span className="text-gray-600 dark:text-gray-300 font-medium">
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
                 {userName}
               </span>
             )}
-
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleDarkMode}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              {isDark ? (
-                <Sun size={20} className="text-yellow-400" />
-              ) : (
-                <Moon size={20} className="text-gray-600" />
-              )}
-            </motion.button>
-
-            <button onClick={handleLogout} className="btn-danger py-2 px-4">
-              <LogOut size={18} />
-              Logout
-            </button>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleDarkMode}
-              className="p-2"
-            >
-              {isDark ? (
-                <Sun size={20} className="text-yellow-400" />
-              ) : (
-                <Moon size={20} className="text-gray-600" />
-              )}
-            </motion.button>
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-700 dark:text-gray-300"
             >
               <Menu size={24} />
             </button>
@@ -98,17 +55,13 @@ export const Navbar: React.FC<NavbarProps> = ({ userName }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t dark:border-gray-700 py-4 space-y-3"
+              className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4 space-y-3"
             >
               {userName && (
-                <p className="text-gray-600 dark:text-gray-300 px-4">
+                <p className="text-gray-700 dark:text-gray-300 px-4 font-medium">
                   {userName}
                 </p>
               )}
-              <button onClick={handleLogout} className="btn-danger w-full">
-                <LogOut size={18} />
-                Logout
-              </button>
             </motion.div>
           )}
         </AnimatePresence>

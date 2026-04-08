@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -8,7 +9,7 @@ export default {
     extend: {
       colors: {
         // PesoLend Color Palette
-        primary: '#FF9933',      // Orange accent
+        primary: '#FFD700',      // Golden accent
         secondary: '#D4AF37',    // Gold
         dark: '#1a1a1a',         // Dark navy/charcoal
         'dark-bg': '#2a2a2a',    // Darker background

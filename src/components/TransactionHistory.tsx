@@ -2,7 +2,13 @@ import { getTransactions } from "../services/storage";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
-export const TransactionHistory: React.FC = () => {
+interface TransactionHistoryProps {
+  filterType?: "All" | "Disbursement" | "Payment";
+}
+
+export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
+  filterType = "All",
+}) => {
   const transactions = getTransactions();
 
   const mockTransactions = [
@@ -29,9 +35,11 @@ export const TransactionHistory: React.FC = () => {
     },
   ];
 
-  const allTransactions = [...transactions, ...mockTransactions].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+  const allTransactions = [...transactions, ...mockTransactions]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .filter(
+      (transaction) => filterType === "All" || transaction.type === filterType,
+    );
 
   return (
     <motion.div

@@ -25,19 +25,21 @@ const DashboardPage: React.FC = () => {
     `₱ ${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-32">
+    <div className="min-h-screen bg-white dark:bg-gray-900 pb-32 transition-colors duration-200">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-gray-800 border-b border-gray-700 py-8"
+        className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-8"
       >
         <div className="container-max">
-          <p className="text-orange-500 text-lg font-semibold mb-2">
+          <p className="text-amber-500 text-lg font-semibold mb-2">
             Congratulations
           </p>
-          <h1 className="text-4xl font-bold text-white">{userName}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            {userName}
+          </h1>
         </div>
       </motion.div>
 
@@ -48,11 +50,11 @@ const DashboardPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-orange-500 rounded-xl p-8 text-white shadow-lg"
+          className="bg-amber-500 rounded-xl p-8 text-white shadow-lg"
         >
           <div className="flex items-start justify-between mb-8">
             <div>
-              <p className="text-orange-100 text-sm font-semibold mb-2">
+              <p className="text-amber-100 text-sm font-semibold mb-2">
                 Available Credit
               </p>
               <h2 className="text-4xl font-bold">
@@ -62,15 +64,15 @@ const DashboardPage: React.FC = () => {
             <CreditCard size={40} className="opacity-80" />
           </div>
 
-          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-orange-400">
+          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-amber-400">
             <div>
-              <p className="text-orange-100 text-sm mb-1">Remaining</p>
+              <p className="text-amber-100 text-sm mb-1">Remaining</p>
               <p className="text-2xl font-bold">
                 {formatPeso(remainingCredit)}
               </p>
             </div>
             <div>
-              <p className="text-orange-100 text-sm mb-1">Due Date</p>
+              <p className="text-amber-100 text-sm mb-1">Due Date</p>
               <p className="text-2xl font-bold">{dueDate}</p>
             </div>
           </div>
@@ -83,7 +85,7 @@ const DashboardPage: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="grid grid-cols-2 gap-4"
         >
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16">
+          <button className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16">
             <FileText size={20} />
             Apply for Loan
           </button>
@@ -100,8 +102,10 @@ const DashboardPage: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">Active Loans</h3>
-            <button className="text-orange-500 text-sm font-semibold hover:text-orange-400 transition-colors">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              Active Loans
+            </h3>
+            <button className="text-amber-500 text-sm font-semibold hover:text-amber-400 transition-colors">
               See all ({activeLoanss.length})
             </button>
           </div>
@@ -113,19 +117,23 @@ const DashboardPage: React.FC = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4 }}
-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-orange-500 transition-colors"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-amber-500 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
                     <CreditCard size={24} className="text-white" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold">{loan.type}</p>
-                    <p className="text-gray-400 text-sm">{loan.status}</p>
+                    <p className="text-gray-900 dark:text-white font-semibold">
+                      {loan.type}
+                    </p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                      {loan.status}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-bold">
+                  <p className="text-gray-900 dark:text-white font-bold">
                     {formatPeso(loan.amount)}
                   </p>
                   <p
