@@ -6,6 +6,16 @@ const STORAGE_KEYS = {
   ACTIVITIES: 'pesolend_activities',
   DARK_MODE: 'pesolend_dark_mode',
   REGISTERED_USERS: 'pesolend_registered_users',
+  SUPPORT_TICKETS: 'pesolend_support_tickets',
+}
+
+// Built-in admin account
+const ADMIN_CREDENTIALS = {
+  email: 'admin@pesolend.com',
+  password: 'admin123',
+  id: 'admin-001',
+  name: 'Admin',
+  isAdmin: true,
 }
 
 // User management
@@ -25,6 +35,7 @@ export const clearUser = () => {
 // Loan management
 export interface Loan {
   id: string
+  userId: string
   amount: number
   duration: number
   status: 'Pending' | 'Approved' | 'Rejected'
@@ -32,10 +43,14 @@ export interface Loan {
   description?: string
 }
 
-export const addLoan = (loan: Omit<Loan, 'id' | 'date'>) => {
-  const loans = getLoansList()
+export const addLoan = (loan: Omit<Loan, 'id' | 'date' | 'userId'>) => {
+  const user = getUser()
+  if (!user) return null
+  
+  const loans = getAllLoans()
   const newLoan: Loan = {
     ...loan,
+    userId: user.id,
     id: Date.now().toString(),
     date: new Date().toISOString().split('T')[0],
   }
@@ -45,13 +60,23 @@ export const addLoan = (loan: Omit<Loan, 'id' | 'date'>) => {
   return newLoan
 }
 
-export const getLoansList = (): Loan[] => {
+// Get all loans (internal use)
+export const getAllLoans = (): Loan[] => {
   const loans = localStorage.getItem(STORAGE_KEYS.LOANS)
   return loans ? JSON.parse(loans) : []
 }
 
+// Get loans for current user only
+export const getLoansList = (): Loan[] => {
+  const user = getUser()
+  if (!user) return []
+  
+  const allLoans = getAllLoans()
+  return allLoans.filter(l => l.userId === user.id)
+}
+
 export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' | 'Rejected') => {
-  const loans = getLoansList()
+  const loans = getAllLoans()
   const loan = loans.find(l => l.id === loanId)
   if (loan) {
     loan.status = status
@@ -63,6 +88,7 @@ export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' 
 // Transaction management
 export interface Transaction {
   id: string
+  userId: string
   type: 'Disbursement' | 'Payment'
   amount: number
   date: string
@@ -70,10 +96,14 @@ export interface Transaction {
   description: string
 }
 
-export const addTransaction = (transaction: Omit<Transaction, 'id' | 'date'>) => {
-  const transactions = getTransactions()
+export const addTransaction = (transaction: Omit<Transaction, 'id' | 'date' | 'userId'>) => {
+  const user = getUser()
+  if (!user) return null
+  
+  const transactions = getAllTransactions()
   const newTransaction: Transaction = {
     ...transaction,
+    userId: user.id,
     id: Date.now().toString(),
     date: new Date().toISOString().split('T')[0],
   }
@@ -82,36 +112,61 @@ export const addTransaction = (transaction: Omit<Transaction, 'id' | 'date'>) =>
   return newTransaction
 }
 
-export const getTransactions = (): Transaction[] => {
+// Get all transactions (internal use)
+export const getAllTransactions = (): Transaction[] => {
   const transactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)
   return transactions ? JSON.parse(transactions) : []
+}
+
+// Get transactions for current user only
+export const getTransactions = (): Transaction[] => {
+  const user = getUser()
+  if (!user) return []
+  
+  const allTransactions = getAllTransactions()
+  return allTransactions.filter(t => t.userId === user.id)
 }
 
 // Activity management
 export interface Activity {
   id: string
+  userId: string
   action: string
   timestamp: string
 }
 
 export const addActivity = (action: string) => {
-  const activities = getActivities()
+  const user = getUser()
+  if (!user) return
+  
+  const activities = getAllActivities()
   const newActivity: Activity = {
     id: Date.now().toString(),
+    userId: user.id,
     action,
     timestamp: new Date().toISOString(),
   }
   activities.unshift(newActivity)
-  // Keep only last 50 activities
-  if (activities.length > 50) {
+  // Keep only last 100 activities per user
+  if (activities.length > 100) {
     activities.pop()
   }
   localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities))
 }
 
-export const getActivities = (): Activity[] => {
+// Get all activities (internal use)
+export const getAllActivities = (): Activity[] => {
   const activities = localStorage.getItem(STORAGE_KEYS.ACTIVITIES)
   return activities ? JSON.parse(activities) : []
+}
+
+// Get activities for current user only
+export const getActivities = (): Activity[] => {
+  const user = getUser()
+  if (!user) return []
+  
+  const allActivities = getAllActivities()
+  return allActivities.filter(a => a.userId === user.id)
 }
 
 // Dark mode
@@ -139,114 +194,7 @@ export const initDarkMode = () => {
   setDarkMode(darkMode)
 }
 
-// Demo Account Login - Bypasses registration
-export const loginDemoAccount = () => {
-  const demoUser = {
-    id: 'demo-user-001',
-    name: 'Juan Dela Cruz',
-    email: 'test@pesolend.com',
-  }
 
-  setUser(demoUser)
-
-  // Initialize demo data
-  const existingLoans = getLoansList()
-  if (existingLoans.length === 0) {
-    // Add demo loans
-    const demoLoans: Loan[] = [
-      {
-        id: 'loan-001',
-        amount: 50000,
-        duration: 12,
-        status: 'Approved',
-        date: '2026-01-15',
-        description: 'Personal Loan',
-      },
-      {
-        id: 'loan-002',
-        amount: 30000,
-        duration: 6,
-        status: 'Pending',
-        date: '2026-04-09',
-        description: 'Business Loan',
-      },
-    ]
-    localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(demoLoans))
-  }
-
-  // Initialize demo transactions
-  const existingTransactions = getTransactions()
-  if (existingTransactions.length === 0) {
-    const demoTransactions: Transaction[] = [
-      {
-        id: 'trans-001',
-        type: 'Disbursement',
-        amount: 50000,
-        date: '2026-01-15',
-        loanId: 'loan-001',
-        description: 'Loan Approval - Loan #001',
-      },
-      {
-        id: 'trans-002',
-        type: 'Payment',
-        amount: 5500,
-        date: '2026-02-15',
-        loanId: 'loan-001',
-        description: 'Payment - Loan #001',
-      },
-      {
-        id: 'trans-003',
-        type: 'Payment',
-        amount: 5500,
-        date: '2026-03-15',
-        loanId: 'loan-001',
-        description: 'Payment - Loan #001',
-      },
-      {
-        id: 'trans-004',
-        type: 'Disbursement',
-        amount: 30000,
-        date: '2026-04-09',
-        loanId: 'loan-002',
-        description: 'Loan Approval - Loan #002',
-      },
-    ]
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(demoTransactions))
-  }
-
-  // Initialize demo activities
-  const existingActivities = getActivities()
-  if (existingActivities.length === 0) {
-    const demoActivities: Activity[] = [
-      {
-        id: 'act-004',
-        action: 'Applied for a ₱30,000.00 loan',
-        timestamp: '2026-04-09T10:30:00.000Z',
-      },
-      {
-        id: 'act-003',
-        action: 'Made payment of ₱5,500.00',
-        timestamp: '2026-03-15T14:20:00.000Z',
-      },
-      {
-        id: 'act-002',
-        action: 'Made payment of ₱5,500.00',
-        timestamp: '2026-02-15T09:45:00.000Z',
-      },
-      {
-        id: 'act-001',
-        action: 'Received loan disbursement of ₱50,000.00',
-        timestamp: '2026-01-15T08:00:00.000Z',
-      },
-    ]
-    localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(demoActivities))
-  }
-}
-
-// Verify demo account credentials
-export const verifyDemoAccount = (email: string, password: string): boolean => {
-  return email === 'test@pesolend.com' && password === 'Test123!'
-}
 
 // Registered user interface
 export interface RegisteredUser {
@@ -294,9 +242,13 @@ export const registerUser = (data: {
 
 // Validate user login and set user session
 export const loginUser = (email: string, password: string): boolean => {
-  // Check demo account first
-  if (verifyDemoAccount(email, password)) {
-    loginDemoAccount()
+  // Check admin credentials first
+  if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+    setUser({
+      id: ADMIN_CREDENTIALS.id,
+      name: ADMIN_CREDENTIALS.name,
+      email: ADMIN_CREDENTIALS.email,
+    })
     return true
   }
 
@@ -314,4 +266,193 @@ export const loginUser = (email: string, password: string): boolean => {
   }
 
   return false
+}
+
+// Check if current user is admin
+export const isAdmin = (): boolean => {
+  const user = getUser()
+  return user?.id === ADMIN_CREDENTIALS.id
+}
+
+// Payment Processing Functions
+export const processPayment = (
+  amount: number,
+  loanId: string,
+  paymentMethod: string,
+  description: string
+): boolean => {
+  if (amount <= 0) {
+    return false
+  }
+
+  try {
+    // Add payment transaction
+    const transaction = addTransaction({
+      type: 'Payment',
+      amount,
+      loanId,
+      description: `Payment - ${description} (${paymentMethod})`,
+    })
+
+    // Add activity log
+    addActivity(`Made a payment of ₱${amount.toLocaleString()} via ${paymentMethod}`)
+
+    return !!transaction
+  } catch (error) {
+    console.error('Payment processing error:', error)
+    return false
+  }
+}
+
+// Get loan by ID
+export const getLoanById = (loanId: string): Loan | undefined => {
+  const loans = getLoansList()
+  return loans.find(l => l.id === loanId)
+}
+
+// Get total disbursed amount
+export const getTotalDisbursed = (): number => {
+  const transactions = getTransactions()
+  return transactions
+    .filter(t => t.type === 'Disbursement')
+    .reduce((sum, t) => sum + t.amount, 0)
+}
+
+// Get total payments made
+export const getTotalPayments = (): number => {
+  const transactions = getTransactions()
+  return transactions
+    .filter(t => t.type === 'Payment')
+    .reduce((sum, t) => sum + t.amount, 0)
+}
+
+// Get available credit (fixed amount - total disbursed + total payments)
+export const getAvailableCredit = (): number => {
+  const totalCredit = 100000 // Default available credit
+  const totalDisbursed = getTotalDisbursed()
+  const totalPayments = getTotalPayments()
+  return totalCredit - totalDisbursed + totalPayments
+}
+
+// Get active loans
+export const getActiveLoans = (): Loan[] => {
+  const loans = getLoansList()
+  return loans.filter(l => l.status === 'Approved')
+}
+
+// Get pending loans (ALL loans - for admin)
+export const getPendingLoans = (): Loan[] => {
+  const loans = getAllLoans()
+  return loans.filter(l => l.status === 'Pending')
+}
+
+// Support Ticket Management
+export interface SupportTicket {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  subject: string
+  message: string
+  status: 'Open' | 'In Progress' | 'Resolved'
+  createdAt: string
+  replies: {
+    id: string
+    from: string // 'user' or 'admin'
+    message: string
+    timestamp: string
+  }[]
+}
+
+// Get all support tickets (admin only)
+export const getAllSupportTickets = (): SupportTicket[] => {
+  const tickets = localStorage.getItem(STORAGE_KEYS.SUPPORT_TICKETS)
+  return tickets ? JSON.parse(tickets) : []
+}
+
+// Get support tickets for current user
+export const getUserSupportTickets = (): SupportTicket[] => {
+  const user = getUser()
+  if (!user) return []
+  
+  const allTickets = getAllSupportTickets()
+  return allTickets.filter(t => t.userId === user.id)
+}
+
+// Create new support ticket
+export const createSupportTicket = (data: {
+  subject: string
+  message: string
+}): SupportTicket | null => {
+  const user = getUser()
+  if (!user) return null
+  
+  const tickets = getAllSupportTickets()
+  const newTicket: SupportTicket = {
+    id: Date.now().toString(),
+    userId: user.id,
+    userName: user.name,
+    userEmail: user.email,
+    subject: data.subject,
+    message: data.message,
+    status: 'Open',
+    createdAt: new Date().toISOString(),
+    replies: [],
+  }
+  
+  tickets.push(newTicket)
+  localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(tickets))
+  addActivity(`Created support ticket: ${data.subject}`)
+  return newTicket
+}
+
+// Add reply to support ticket
+export const addTicketReply = (ticketId: string, from: 'user' | 'admin', message: string): boolean => {
+  const tickets = getAllSupportTickets()
+  const ticket = tickets.find(t => t.id === ticketId)
+  
+  if (ticket) {
+    ticket.replies.push({
+      id: Date.now().toString(),
+      from,
+      message,
+      timestamp: new Date().toISOString(),
+    })
+    localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(tickets))
+    
+    if (from === 'admin') {
+      addActivityForUser(ticket.userId, `Admin replied to your support ticket: ${ticket.subject}`)
+    }
+    return true
+  }
+  return false
+}
+
+// Update ticket status
+export const updateTicketStatus = (ticketId: string, status: 'Open' | 'In Progress' | 'Resolved'): boolean => {
+  const tickets = getAllSupportTickets()
+  const ticket = tickets.find(t => t.id === ticketId)
+  
+  if (ticket) {
+    ticket.status = status
+    localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(tickets))
+    return true
+  }
+  return false
+}
+
+// Add activity for a specific user (helper for admin actions)
+export const addActivityForUser = (userId: string, action: string) => {
+  const activities = getAllActivities()
+  const newActivity: Activity = {
+    id: Date.now().toString(),
+    userId,
+    action,
+    timestamp: new Date().toISOString(),
+  }
+  activities.unshift(newActivity)
+  if (activities.length > 100) {
+    activities.pop()
+  }
+  localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities))
 }

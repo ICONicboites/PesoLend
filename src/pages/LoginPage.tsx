@@ -2,12 +2,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../services/storage";
+import { loginUser, isAdmin } from "../services/storage";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("test@pesolend.com");
-  const [password, setPassword] = useState("Test123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
@@ -27,7 +27,12 @@ const LoginPage: React.FC = () => {
 
     // Check both demo account and registered users
     if (loginUser(email, password)) {
-      navigate("/dashboard");
+      // Check if user is admin
+      if (isAdmin()) {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } else {
       setError("Invalid email or password");
     }

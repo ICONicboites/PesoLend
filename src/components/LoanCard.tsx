@@ -1,10 +1,10 @@
-import { Loan } from "../services/storage";
+import { Loan, updateLoanStatus } from "../services/storage";
 import { motion } from "framer-motion";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
 
 interface LoanCardProps {
   loan: Loan;
-  onStatusChange: (status: "Approved" | "Rejected") => void;
+  onStatusChange: () => void;
   index?: number;
 }
 
@@ -36,6 +36,11 @@ export const LoanCard: React.FC<LoanCardProps> = ({
 
   const config = statusConfig[loan.status];
   const StatusIcon = config.icon;
+
+  const handleStatusChange = (newStatus: "Approved" | "Rejected") => {
+    updateLoanStatus(loan.id, newStatus);
+    onStatusChange();
+  };
 
   return (
     <motion.div
@@ -70,7 +75,7 @@ export const LoanCard: React.FC<LoanCardProps> = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onStatusChange("Approved")}
+            onClick={() => handleStatusChange("Approved")}
             className="flex-1 bg-green-500 text-white py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors"
           >
             Approve
@@ -78,7 +83,7 @@ export const LoanCard: React.FC<LoanCardProps> = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onStatusChange("Rejected")}
+            onClick={() => handleStatusChange("Rejected")}
             className="flex-1 bg-red-500 text-white py-2 rounded-lg font-semibold hover:bg-red-600 transition-colors"
           >
             Reject

@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "../components/Navbar";
 import { TransactionHistory } from "../components/TransactionHistory";
 import { BottomNavigation } from "../components/BottomNavigation";
 import { motion } from "framer-motion";
 import { Download } from "lucide-react";
-import { getUser } from "../services/storage";
+import { getUser, getTransactions, getTotalPayments, getTotalDisbursed } from "../services/storage";
 
 const TransactionsPage: React.FC = () => {
   const user = getUser();
   const [filterType, setFilterType] = useState<
     "All" | "Disbursement" | "Payment"
   >("All");
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [totalDisbursedAmount, setTotalDisbursedAmount] = useState(0);
+  const [totalPaidAmount, setTotalPaidAmount] = useState(0);
+
+  useEffect(() => {
+    const transactions = getTransactions();
+    setTotalTransactions(transactions.length);
+    setTotalDisbursedAmount(getTotalDisbursed());
+    setTotalPaidAmount(getTotalPayments());
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32">
@@ -83,20 +93,24 @@ const TransactionsPage: React.FC = () => {
               Total Transactions
             </p>
             <h3 className="text-3xl font-bold text-gray-800 dark:text-white">
-              24
+              {totalTransactions}
             </h3>
           </div>
           <div className="card">
             <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
               Total Disbursed
             </p>
-            <h3 className="text-3xl font-bold text-green-600">₱150,000</h3>
+            <h3 className="text-3xl font-bold text-green-600">
+              ₱{totalDisbursedAmount.toLocaleString()}
+            </h3>
           </div>
           <div className="card">
             <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
               Total Paid
             </p>
-            <h3 className="text-3xl font-bold text-blue-600">₱45,000</h3>
+            <h3 className="text-3xl font-bold text-blue-600">
+              ₱{totalPaidAmount.toLocaleString()}
+            </h3>
           </div>
         </motion.div>
       </div>

@@ -2,7 +2,12 @@ import { getActivities } from "../services/storage";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 
-export const ActivityLog: React.FC = () => {
+interface ActivityLogProps {
+  limit?: number;
+  showHeader?: boolean;
+}
+
+export const ActivityLog: React.FC<ActivityLogProps> = ({ limit = 5, showHeader = false }) => {
   const activities = getActivities();
 
   const formatTime = (timestamp: string) => {
@@ -27,14 +32,16 @@ export const ActivityLog: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="card"
+      className={showHeader ? "card" : ""}
     >
-      <div className="flex items-center gap-2 mb-6">
-        <Clock size={24} className="text-blue-600" />
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-          Recent Activity
-        </h2>
-      </div>
+      {showHeader && (
+        <div className="flex items-center gap-2 mb-6">
+          <Clock size={24} className="text-blue-600" />
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+            Recent Activity
+          </h2>
+        </div>
+      )}
 
       {activities.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-8">
@@ -42,7 +49,7 @@ export const ActivityLog: React.FC = () => {
         </p>
       ) : (
         <div className="space-y-3">
-          {activities.slice(0, 5).map((activity, index) => (
+          {activities.slice(0, limit).map((activity, index) => (
             <motion.div
               key={activity.id}
               initial={{ opacity: 0, x: -20 }}

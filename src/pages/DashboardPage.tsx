@@ -1,28 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CreditCard, FileText, CheckCircle } from "lucide-react";
 import { BottomNavigation } from "../components/BottomNavigation";
-
-interface Loan {
-  id: string;
-  type: "Personal Loan" | "Emergency Fund";
-  amount: number;
-  status: "Approved" | "Pending";
-}
+import { LoanApplicationModal } from "../components/LoanApplicationModal";
+import { PaymentModal } from "../components/PaymentModal";
+import { LoanCard } from "../components/LoanCard";
+import { ActivityLog } from "../components/ActivityLog";
+import {
+  getUser,
+  getActiveLoans,
+  getAvailableCredit,
+  getTotalPayments,
+  isAdmin,
+  Loan,
+} from "../services/storage";
 
 const DashboardPage: React.FC = () => {
-  const [userName] = useState("Juan Dela Cruz");
-  const [availableCredit] = useState(25000);
-  const [remainingCredit] = useState(3600);
-  const [dueDate] = useState("Apr 15, 2025");
+  const navigate = useNavigate();
+  const user = getUser();
+  const [userName, setUserName] = useState("");
+  const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
+  const [availableCredit, setAvailableCredit] = useState(0);
+  const [totalPayments, setTotalPayments] = useState(0);
+  const [loanModalOpen, setLoanModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const [activeLoanss] = useState<Loan[]>([
-    { id: "1", type: "Personal Loan", amount: 3000, status: "Approved" },
-    { id: "2", type: "Emergency Fund", amount: 2140, status: "Pending" },
-  ]);
+  useEffect(() => {
+    // Redirect admin users to admin dashboard
+    if (isAdmin()) {
+      navigate("/admin");
+      return;
+    }
+
+    if (user) {
+      setUserName(user.name);
+    }
+    // Fetch real data from storage
+    const loans = getActiveLoans();
+    setActiveLoans(loans);
+    setAvailableCredit(getAvailableCredit());
+    setTotalPayments(getTotalPayments());
+  }, [user, refreshTrigger, navigate]);
 
   const formatPeso = (amount: number) =>
     `₱ ${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 15);
+  const dueDateStr = dueDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-32 transition-colors duration-200">
@@ -66,14 +93,14 @@ const DashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-6 pt-6 border-t border-amber-400">
             <div>
-              <p className="text-amber-100 text-sm mb-1">Remaining</p>
+              <p className="text-amber-100 text-sm mb-1">Total Paid</p>
               <p className="text-2xl font-bold">
-                {formatPeso(remainingCredit)}
+                {formatPeso(totalPayments)}
               </p>
             </div>
             <div>
               <p className="text-amber-100 text-sm mb-1">Due Date</p>
-              <p className="text-2xl font-bold">{dueDate}</p>
+              <p className="text-2xl font-bold">{dueDateStr}</p>
             </div>
           </div>
         </motion.div>
@@ -85,14 +112,24 @@ const DashboardPage: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="grid grid-cols-2 gap-4"
         >
-          <button className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setLoanModalOpen(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16"
+          >
             <FileText size={20} />
             Apply for Loan
-          </button>
-          <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16">
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setPaymentModalOpen(true)}
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-16"
+          >
             <CheckCircle size={20} />
             Pay Now
-          </button>
+          </motion.button>
         </motion.div>
 
         {/* Active Loans */}
@@ -106,47 +143,74 @@ const DashboardPage: React.FC = () => {
               Active Loans
             </h3>
             <button className="text-amber-500 text-sm font-semibold hover:text-amber-400 transition-colors">
-              See all ({activeLoanss.length})
+              See all ({activeLoans.length})
             </button>
           </div>
 
-          <div className="space-y-3">
-            {activeLoanss.map((loan) => (
-              <motion.div
-                key={loan.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4 }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-amber-500 transition-colors"
+          {activeLoans.length > 0 ? (
+            <div className="space-y-3">
+              {activeLoans.map((loan) => (
+                <LoanCard
+                  key={loan.id}
+                  loan={loan}
+                  onStatusChange={() => setRefreshTrigger(prev => prev + 1)}
+                />
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center"
+            >
+              <CreditCard size={40} className="mx-auto mb-3 text-gray-400" />
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                No active loans yet
+              </p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">
+                Apply for a loan to get started
+              </p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setLoanModalOpen(true)}
+                className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <CreditCard size={24} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-gray-900 dark:text-white font-semibold">
-                      {loan.type}
-                    </p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                      {loan.status}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-gray-900 dark:text-white font-bold">
-                    {formatPeso(loan.amount)}
-                  </p>
-                  <p
-                    className={`text-sm font-semibold ${loan.status === "Approved" ? "text-green-500" : "text-gray-400"}`}
-                  >
-                    {loan.status}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                Apply for Loan
+              </motion.button>
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* Activity Log */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Recent Activity
+          </h3>
+          <ActivityLog limit={5} />
         </motion.div>
       </div>
+
+      {/* Modals */}
+      <LoanApplicationModal
+        isOpen={loanModalOpen}
+        onClose={() => setLoanModalOpen(false)}
+        onSubmit={() => {
+          setLoanModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }}
+      />
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        onSuccess={() => {
+          setRefreshTrigger(prev => prev + 1);
+        }}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation />

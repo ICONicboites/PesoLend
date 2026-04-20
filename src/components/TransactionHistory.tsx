@@ -11,31 +11,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 }) => {
   const transactions = getTransactions();
 
-  const mockTransactions = [
-    {
-      id: "1",
-      type: "Disbursement" as const,
-      amount: 50000,
-      date: "2024-01-15",
-      description: "Loan Disbursement",
-    },
-    {
-      id: "2",
-      type: "Payment" as const,
-      amount: 5000,
-      date: "2024-01-20",
-      description: "Monthly Payment",
-    },
-    {
-      id: "3",
-      type: "Payment" as const,
-      amount: 5000,
-      date: "2024-02-20",
-      description: "Monthly Payment",
-    },
-  ];
-
-  const allTransactions = [...transactions, ...mockTransactions]
+  const filteredTransactions = transactions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .filter(
       (transaction) => filterType === "All" || transaction.type === filterType,
@@ -71,47 +47,55 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
             </tr>
           </thead>
           <tbody>
-            {allTransactions.slice(0, 10).map((transaction, index) => (
-              <motion.tr
-                key={transaction.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: index * 0.05 }}
-                className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`p-2 rounded-full ${
-                        transaction.type === "Disbursement"
-                          ? "bg-green-100 dark:bg-green-900"
-                          : "bg-blue-100 dark:bg-blue-900"
-                      }`}
-                    >
-                      {transaction.type === "Disbursement" ? (
-                        <ArrowDownRight size={18} className="text-green-600" />
-                      ) : (
-                        <ArrowUpRight size={18} className="text-blue-600" />
-                      )}
+            {filteredTransactions.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                  No transactions found
+                </td>
+              </tr>
+            ) : (
+              filteredTransactions.slice(0, 10).map((transaction, index) => (
+                <motion.tr
+                  key={transaction.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`p-2 rounded-full ${
+                          transaction.type === "Disbursement"
+                            ? "bg-green-100 dark:bg-green-900"
+                            : "bg-blue-100 dark:bg-blue-900"
+                        }`}
+                      >
+                        {transaction.type === "Disbursement" ? (
+                          <ArrowDownRight size={18} className="text-green-600" />
+                        ) : (
+                          <ArrowUpRight size={18} className="text-blue-600" />
+                        )}
+                      </div>
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        {transaction.type}
+                      </span>
                     </div>
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">
-                      {transaction.type}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="font-bold text-gray-800 dark:text-white">
+                      ₱{transaction.amount.toLocaleString()}
                     </span>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="font-bold text-gray-800 dark:text-white">
-                    ₱{transaction.amount.toLocaleString()}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                  {transaction.description}
-                </td>
-                <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-sm">
-                  {new Date(transaction.date).toLocaleDateString()}
-                </td>
-              </motion.tr>
-            ))}
+                  </td>
+                  <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                    {transaction.description}
+                  </td>
+                  <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-sm">
+                    {new Date(transaction.date).toLocaleDateString()}
+                  </td>
+                </motion.tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

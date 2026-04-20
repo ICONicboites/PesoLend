@@ -1,31 +1,33 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Plus, Activity, User } from "lucide-react";
+import { Home, HelpCircle, Activity, User } from "lucide-react";
 import { motion } from "framer-motion";
-import { ProfileModal } from "./ProfileModal";
+import { PaymentModal } from "./PaymentModal";
 
 interface NavItem {
   icon: any;
   label: string;
+  action?: "home" | "payment";
   path?: string;
-  action?: "profile";
 }
 
 export const BottomNavigation: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   const navItems: NavItem[] = [
-    { icon: Home, label: "Home", path: "/dashboard" },
-    { icon: Plus, label: "Apply", path: "/loans" },
+    { icon: Home, label: "Home", action: "home" },
+    { icon: HelpCircle, label: "Support", path: "/support" },
     { icon: Activity, label: "Activity", path: "/transactions" },
-    { icon: User, label: "Profile", action: "profile" },
+    { icon: User, label: "Profile", path: "/profile" },
   ];
 
   const handleNavClick = (item: NavItem) => {
-    if (item.action === "profile") {
-      setIsProfileOpen(true);
+    if (item.action === "payment") {
+      setIsPaymentOpen(true);
+    } else if (item.action === "home") {
+      navigate("/dashboard");
     } else if (item.path) {
       navigate(item.path);
     }
@@ -58,9 +60,10 @@ export const BottomNavigation: React.FC = () => {
         </div>
       </div>
 
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        onSuccess={() => setIsPaymentOpen(false)}
       />
     </>
   );
