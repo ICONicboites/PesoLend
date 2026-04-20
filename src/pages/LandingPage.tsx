@@ -53,7 +53,7 @@ const LandingPage: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="space-y-4 mb-16"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16"
         >
           {features.map((feature, idx) => {
             const Icon = feature.icon;
@@ -65,10 +65,7 @@ const LandingPage: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
                 className="flex items-center gap-4 p-5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-amber-500 transition-colors"
               >
-                <CheckCircle
-                  size={24}
-                  className="text-green-500 flex-shrink-0"
-                />
+                <Icon size={24} className="text-amber-500 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-gray-900 dark:text-white font-bold text-lg">
                     {feature.title}
@@ -77,7 +74,6 @@ const LandingPage: React.FC = () => {
                     {feature.subtitle}
                   </p>
                 </div>
-                <Icon size={28} className="text-amber-500 flex-shrink-0" />
               </motion.div>
             );
           })}
