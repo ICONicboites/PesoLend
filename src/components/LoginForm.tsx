@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import { setUser } from "../services/storage";
+import { loginUser, isAdmin } from "../services/storage";
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -30,17 +30,18 @@ export const LoginForm: React.FC = () => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Create user with email (name extracted from email)
-    const name =
-      email.split("@")[0].charAt(0).toUpperCase() +
-      email.split("@")[0].slice(1);
-    setUser({
-      id: Date.now().toString(),
-      name,
-      email,
-    });
-
-    navigate("/dashboard");
+    // Validate credentials against admin and registered users
+    const success = loginUser(email, password);
+    
+    if (success) {
+      // Check if this is an admin user
+      const userIsAdmin = isAdmin();
+      setIsLoading(false);
+      navigate(userIsAdmin ? "/admin" : "/dashboard");
+    } else {
+      setError("Invalid email or password");
+      setIsLoading(false);
+    }
   };
 
   return (

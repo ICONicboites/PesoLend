@@ -16,6 +16,8 @@ import { SupportPage } from "./pages/SupportPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminLoans } from "./pages/AdminLoans";
 import { AdminSupport } from "./pages/AdminSupport";
+import { BalanceManagement } from "./pages/BalanceManagement";
+import { TransactionAuditLog } from "./pages/TransactionAuditLog";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 
@@ -84,6 +86,22 @@ function App() {
           element={
             <AdminRoute>
               <AdminSupport />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/balance"
+          element={
+            <AdminRoute>
+              <BalanceManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/audit-log"
+          element={
+            <AdminRoute>
+              <TransactionAuditLog />
             </AdminRoute>
           }
         />

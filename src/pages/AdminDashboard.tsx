@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, MessageSquare, Clock, LogOut } from "lucide-react";
-import { getAllSupportTickets, getPendingLoans, isAdmin, clearUser, Loan } from "../services/storage";
+import { CheckCircle2, XCircle, MessageSquare, Clock, LogOut, Wallet, BarChart3 } from "lucide-react";
+import { getAllSupportTickets, getPendingLoans, isAdmin, clearUser, Loan, getTotalSystemBalance, getAllTransactions } from "../services/storage";
 
 interface TicketSummary {
   open: number;
@@ -18,6 +18,8 @@ export const AdminDashboard = () => {
     inProgress: 0,
     resolved: 0,
   });
+  const [systemBalance, setSystemBalance] = useState<number>(0);
+  const [pendingTransactions, setPendingTransactions] = useState<number>(0);
 
   useEffect(() => {
     if (!isAdmin()) {
@@ -34,6 +36,13 @@ export const AdminDashboard = () => {
       inProgress: tickets.filter(t => t.status === 'In Progress').length,
       resolved: tickets.filter(t => t.status === 'Resolved').length,
     });
+
+    const balance = getTotalSystemBalance();
+    setSystemBalance(balance);
+
+    const transactions = getAllTransactions();
+    const pending = transactions.filter(t => t.status === 'Pending').length;
+    setPendingTransactions(pending);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -55,7 +64,7 @@ export const AdminDashboard = () => {
               Admin Dashboard
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage loans and support tickets
+              Manage loans, support tickets, and balance transactions
             </p>
           </div>
           <motion.button
@@ -145,6 +154,42 @@ export const AdminDashboard = () => {
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                 <CheckCircle2 size={24} className="text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* System Balance */}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="card"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">System Balance</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
+                  ₱{systemBalance.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                <Wallet size={24} className="text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Pending Transactions */}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="card"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Pending Transactions</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
+                  {pendingTransactions}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                <BarChart3 size={24} className="text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </motion.div>
@@ -241,7 +286,7 @@ export const AdminDashboard = () => {
           <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
             Quick Access
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -267,6 +312,36 @@ export const AdminDashboard = () => {
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Reply to customer support inquiries
+              </p>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/admin/balance")}
+              className="p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-400 rounded-lg text-left transition-colors"
+            >
+              <div className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <Wallet size={18} />
+                Manage Balance
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Configure payment methods and approve transactions
+              </p>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/admin/audit-log")}
+              className="p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-400 rounded-lg text-left transition-colors"
+            >
+              <div className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <BarChart3 size={18} />
+                Audit Log
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                View transaction history and fund flow
               </p>
             </motion.button>
           </div>

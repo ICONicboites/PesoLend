@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
   DARK_MODE: 'pesolend_dark_mode',
   REGISTERED_USERS: 'pesolend_registered_users',
   SUPPORT_TICKETS: 'pesolend_support_tickets',
+  PAYMENT_METHODS: 'pesolend_payment_methods',
+  BALANCE_TRANSACTIONS: 'pesolend_balance_transactions',
 }
 
 // Built-in admin account
@@ -89,11 +91,13 @@ export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' 
 export interface Transaction {
   id: string
   userId: string
-  type: 'Disbursement' | 'Payment'
+  type: 'Disbursement' | 'Payment' | 'Deposit' | 'Withdrawal'
   amount: number
   date: string
   loanId?: string
   description: string
+  status: 'Pending' | 'Approved' | 'Rejected'
+  paymentMethodId?: string
 }
 
 export const addTransaction = (transaction: Omit<Transaction, 'id' | 'date' | 'userId'>) => {
@@ -106,6 +110,7 @@ export const addTransaction = (transaction: Omit<Transaction, 'id' | 'date' | 'u
     userId: user.id,
     id: Date.now().toString(),
     date: new Date().toISOString().split('T')[0],
+    status: transaction.status || 'Pending',
   }
   transactions.push(newTransaction)
   localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions))
@@ -404,6 +409,274 @@ export const createSupportTicket = (data: {
   localStorage.setItem(STORAGE_KEYS.SUPPORT_TICKETS, JSON.stringify(tickets))
   addActivity(`Created support ticket: ${data.subject}`)
   return newTicket
+}
+
+// ====== PAYMENT METHODS & BALANCE MANAGEMENT ======
+
+// Payment Method Interface
+export interface PaymentMethod {
+  id: string
+  name: string
+  type: 'GCash' | 'Bank Transfer' | 'PayPal' | 'Other'
+  available_balance: number
+  createdAt: string
+  status: 'Active' | 'Inactive'
+}
+
+// Balance Transaction Record (for audit)
+export interface BalanceTransaction {
+  id: string
+  paymentMethodId: string
+  type: 'Deposit' | 'Withdrawal'
+  amount: number
+  transactionId: string // Reference to main transaction
+  status: 'Pending' | 'Approved' | 'Rejected'
+  previousBalance: number
+  newBalance: number
+  timestamp: string
+  description: string
+}
+
+// Initialize default payment methods
+const initializePaymentMethods = () => {
+  const existing = getPaymentMethods()
+  if (existing.length === 0) {
+    const defaults: PaymentMethod[] = [
+      {
+        id: 'pm-gcash',
+        name: 'GCash',
+        type: 'GCash',
+        available_balance: 1000000,
+        createdAt: new Date().toISOString(),
+        status: 'Active',
+      },
+      {
+        id: 'pm-bank',
+        name: 'Bank Transfer',
+        type: 'Bank Transfer',
+        available_balance: 1000000,
+        createdAt: new Date().toISOString(),
+        status: 'Active',
+      },
+      {
+        id: 'pm-paypal',
+        name: 'PayPal',
+        type: 'PayPal',
+        available_balance: 1000000,
+        createdAt: new Date().toISOString(),
+        status: 'Active',
+      },
+    ]
+    localStorage.setItem(STORAGE_KEYS.PAYMENT_METHODS, JSON.stringify(defaults))
+  }
+}
+
+// Get all payment methods
+export const getPaymentMethods = (): PaymentMethod[] => {
+  initializePaymentMethods()
+  const methods = localStorage.getItem(STORAGE_KEYS.PAYMENT_METHODS)
+  return methods ? JSON.parse(methods) : []
+}
+
+// Get payment method by ID
+export const getPaymentMethodById = (id: string): PaymentMethod | undefined => {
+  const methods = getPaymentMethods()
+  return methods.find(m => m.id === id)
+}
+
+// Get total system balance across all payment methods
+export const getTotalSystemBalance = (): number => {
+  const methods = getPaymentMethods()
+  return methods.reduce((sum, m) => sum + m.available_balance, 0)
+}
+
+// Update payment method balance
+const updatePaymentMethodBalance = (paymentMethodId: string, newBalance: number) => {
+  const methods = getPaymentMethods()
+  const method = methods.find(m => m.id === paymentMethodId)
+  if (method) {
+    method.available_balance = Math.max(0, newBalance) // Ensure balance never goes below 0
+    localStorage.setItem(STORAGE_KEYS.PAYMENT_METHODS, JSON.stringify(methods))
+  }
+}
+
+// Record balance transaction (for audit trail)
+const recordBalanceTransaction = (record: Omit<BalanceTransaction, 'id' | 'timestamp'>) => {
+  const balanceTransactions = getAllBalanceTransactions()
+  const newRecord: BalanceTransaction = {
+    ...record,
+    id: Date.now().toString(),
+    timestamp: new Date().toISOString(),
+  }
+  balanceTransactions.push(newRecord)
+  localStorage.setItem(STORAGE_KEYS.BALANCE_TRANSACTIONS, JSON.stringify(balanceTransactions))
+  return newRecord
+}
+
+// Get all balance transactions (admin only)
+export const getAllBalanceTransactions = (): BalanceTransaction[] => {
+  const transactions = localStorage.getItem(STORAGE_KEYS.BALANCE_TRANSACTIONS)
+  return transactions ? JSON.parse(transactions) : []
+}
+
+// Get balance transactions for a specific payment method
+export const getPaymentMethodTransactions = (paymentMethodId: string): BalanceTransaction[] => {
+  const allTransactions = getAllBalanceTransactions()
+  return allTransactions.filter(t => t.paymentMethodId === paymentMethodId)
+}
+
+// Process transaction status change and update balance
+export const updateTransactionStatus = (
+  transactionId: string,
+  newStatus: 'Pending' | 'Approved' | 'Rejected',
+  paymentMethodId?: string
+): boolean => {
+  try {
+    const transactions = getAllTransactions()
+    const transaction = transactions.find(t => t.id === transactionId)
+    
+    if (!transaction) return false
+
+    const oldStatus = transaction.status
+    transaction.status = newStatus
+
+    // Only update balance when transitioning to Approved
+    if (oldStatus !== 'Approved' && newStatus === 'Approved' && paymentMethodId) {
+      const paymentMethod = getPaymentMethodById(paymentMethodId)
+      if (!paymentMethod) return false
+
+      const previousBalance = paymentMethod.available_balance
+      let newBalance = previousBalance
+
+      if (transaction.type === 'Deposit' || transaction.type === 'Payment') {
+        // Deposits and payments increase balance
+        newBalance = previousBalance + transaction.amount
+      } else if (transaction.type === 'Withdrawal' || transaction.type === 'Disbursement') {
+        // Withdrawals and disbursements decrease balance
+        if (previousBalance < transaction.amount) {
+          return false // Insufficient balance
+        }
+        newBalance = previousBalance - transaction.amount
+      }
+
+      // Update payment method balance
+      updatePaymentMethodBalance(paymentMethodId, newBalance)
+
+      // Record balance transaction for audit
+      recordBalanceTransaction({
+        paymentMethodId,
+        type: (transaction.type === 'Deposit' || transaction.type === 'Payment') ? 'Deposit' : 'Withdrawal',
+        amount: transaction.amount,
+        transactionId,
+        status: 'Approved',
+        previousBalance,
+        newBalance,
+        description: transaction.description,
+      })
+    } else if (oldStatus === 'Approved' && newStatus === 'Rejected' && paymentMethodId) {
+      // Reverse the transaction if it was previously approved
+      const paymentMethod = getPaymentMethodById(paymentMethodId)
+      if (!paymentMethod) return false
+
+      const previousBalance = paymentMethod.available_balance
+      let newBalance = previousBalance
+
+      if (transaction.type === 'Deposit' || transaction.type === 'Payment') {
+        newBalance = previousBalance - transaction.amount
+      } else if (transaction.type === 'Withdrawal' || transaction.type === 'Disbursement') {
+        newBalance = previousBalance + transaction.amount
+      }
+
+      updatePaymentMethodBalance(paymentMethodId, newBalance)
+
+      recordBalanceTransaction({
+        paymentMethodId,
+        type: (transaction.type === 'Deposit' || transaction.type === 'Payment') ? 'Deposit' : 'Withdrawal',
+        amount: transaction.amount,
+        transactionId,
+        status: 'Rejected',
+        previousBalance,
+        newBalance,
+        description: transaction.description,
+      })
+    }
+
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions))
+    addActivity(`Transaction #${transactionId} status changed to ${newStatus}`)
+    return true
+  } catch (error) {
+    console.error('Error updating transaction status:', error)
+    return false
+  }
+}
+
+// Create a customer transaction (Deposit/Withdrawal)
+export const createCustomerTransaction = (data: {
+  type: 'Deposit' | 'Withdrawal'
+  amount: number
+  paymentMethodId: string
+  description: string
+}): Transaction | null => {
+  const user = getUser()
+  if (!user) return null
+
+  // Validate payment method exists
+  const paymentMethod = getPaymentMethodById(data.paymentMethodId)
+  if (!paymentMethod) return null
+
+  // For withdrawals, check if sufficient balance exists
+  if (data.type === 'Withdrawal' && paymentMethod.available_balance < data.amount) {
+    return null // Insufficient balance
+  }
+
+  const transaction = addTransaction({
+    type: data.type,
+    amount: data.amount,
+    paymentMethodId: data.paymentMethodId,
+    description: data.description,
+    status: 'Pending',
+  })
+
+  if (transaction) {
+    const actionText = data.type === 'Deposit' ? 'requested a deposit' : 'requested a withdrawal'
+    addActivity(`${actionText} of ₱${data.amount.toLocaleString()} via ${paymentMethod.name}`)
+  }
+
+  return transaction
+}
+
+// Get transactions filtered by various criteria
+export const getFilteredTransactions = (filters: {
+  paymentMethodId?: string
+  type?: 'Deposit' | 'Withdrawal'
+  status?: 'Pending' | 'Approved' | 'Rejected'
+  startDate?: string
+  endDate?: string
+  isAdmin?: boolean
+}): Transaction[] => {
+  let transactions = filters.isAdmin ? getAllTransactions() : getTransactions()
+
+  if (filters.paymentMethodId) {
+    transactions = transactions.filter(t => t.paymentMethodId === filters.paymentMethodId)
+  }
+
+  if (filters.type) {
+    transactions = transactions.filter(t => t.type === filters.type)
+  }
+
+  if (filters.status) {
+    transactions = transactions.filter(t => t.status === filters.status)
+  }
+
+  if (filters.startDate) {
+    transactions = transactions.filter(t => t.date >= filters.startDate)
+  }
+
+  if (filters.endDate) {
+    transactions = transactions.filter(t => t.date <= filters.endDate)
+  }
+
+  return transactions
 }
 
 // Add reply to support ticket
