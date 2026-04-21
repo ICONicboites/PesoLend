@@ -43,6 +43,7 @@ export interface Loan {
   status: 'Pending' | 'Approved' | 'Rejected'
   date: string
   description?: string
+  paymentMethodId?: string
 }
 
 export const addLoan = (loan: Omit<Loan, 'id' | 'date' | 'userId'>) => {
@@ -55,6 +56,7 @@ export const addLoan = (loan: Omit<Loan, 'id' | 'date' | 'userId'>) => {
     userId: user.id,
     id: Date.now().toString(),
     date: new Date().toISOString().split('T')[0],
+    paymentMethodId: loan.paymentMethodId || 'pm-gcash',
   }
   loans.push(newLoan)
   localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loans))
@@ -77,13 +79,42 @@ export const getLoansList = (): Loan[] => {
   return allLoans.filter(l => l.userId === user.id)
 }
 
-export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' | 'Rejected') => {
+export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' | 'Rejected', paymentMethodId?: string) => {
   const loans = getAllLoans()
   const loan = loans.find(l => l.id === loanId)
   if (loan) {
     loan.status = status
+    if (paymentMethodId) {
+      loan.paymentMethodId = paymentMethodId
+    }
+    
+    // Transfer funds when loan is approved
+    if (status === 'Approved' && loan.paymentMethodId) {
+      const selectedMethod = loan.paymentMethodId
+      deductFromPaymentMethod(selectedMethod, loan.amount)
+      
+      // Create disbursement transaction
+      const transaction = addTransaction({
+        type: 'Disbursement',
+        amount: loan.amount,
+        loanId,
+        paymentMethodId: selectedMethod,
+        description: `Loan disbursement to ${selectedMethod}`,
+        status: 'Approved'
+      })
+      
+      addActivity(`Loan #${loanId} approved and ₱${loan.amount.toLocaleString()} disbursed to ${selectedMethod}`)
+    }
+    
+    // Add back funds when loan is rejected
+    if (status === 'Rejected' && loan.paymentMethodId) {
+      addToPaymentMethod(loan.paymentMethodId, loan.amount)
+      addActivity(`Loan #${loanId} rejected`)
+    } else if (status === 'Rejected') {
+      addActivity(`Loan #${loanId} rejected`)
+    }
+    
     localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loans))
-    addActivity(`Loan #${loanId} status changed to ${status}`)
   }
 }
 
@@ -279,6 +310,39 @@ export const isAdmin = (): boolean => {
   return user?.id === ADMIN_CREDENTIALS.id
 }
 
+// Payment method balance functions
+export const deductFromPaymentMethod = (paymentMethodId: string, amount: number): boolean => {
+  try {
+    const methods = getPaymentMethods()
+    const method = methods.find(m => m.id === paymentMethodId)
+    if (method) {
+      method.available_balance -= amount
+      localStorage.setItem(STORAGE_KEYS.PAYMENT_METHODS, JSON.stringify(methods))
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('Error deducting from payment method:', error)
+    return false
+  }
+}
+
+export const addToPaymentMethod = (paymentMethodId: string, amount: number): boolean => {
+  try {
+    const methods = getPaymentMethods()
+    const method = methods.find(m => m.id === paymentMethodId)
+    if (method) {
+      method.available_balance += amount
+      localStorage.setItem(STORAGE_KEYS.PAYMENT_METHODS, JSON.stringify(methods))
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('Error adding to payment method:', error)
+    return false
+  }
+}
+
 // Payment Processing Functions
 export const processPayment = (
   amount: number,
@@ -291,12 +355,23 @@ export const processPayment = (
   }
 
   try {
+    // Deduct from payment method balance
+    const paymentMethodId = paymentMethod.includes('pm-') ? paymentMethod : 'pm-gcash'
+    const deducted = deductFromPaymentMethod(paymentMethodId, amount)
+    
+    if (!deducted) {
+      console.error('Insufficient balance in payment method')
+      return false
+    }
+    
     // Add payment transaction
     const transaction = addTransaction({
       type: 'Payment',
       amount,
       loanId,
+      paymentMethodId: paymentMethodId,
       description: `Payment - ${description} (${paymentMethod})`,
+      status: 'Approved'
     })
 
     // Add activity log

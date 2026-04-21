@@ -28,12 +28,14 @@ export const AdminLoans = () => {
   }, [navigate]);
 
   const handleApprove = (loanId: string) => {
-    updateLoanStatus(loanId, 'Approved');
+    const loan = loans.find(l => l.id === loanId);
+    updateLoanStatus(loanId, 'Approved', loan?.paymentMethodId);
     setLoans(loans.filter(l => l.id !== loanId));
   };
 
   const handleReject = (loanId: string) => {
-    updateLoanStatus(loanId, 'Rejected');
+    const loan = loans.find(l => l.id === loanId);
+    updateLoanStatus(loanId, 'Rejected', loan?.paymentMethodId);
     setLoans(loans.filter(l => l.id !== loanId));
   };
 

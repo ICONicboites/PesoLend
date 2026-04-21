@@ -18,6 +18,7 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
     amount: "",
     duration: "",
     description: "",
+    paymentMethodId: "pm-gcash",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -59,11 +60,12 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
       duration: duration,
       status: "Pending",
       description: formData.description,
+      paymentMethodId: formData.paymentMethodId,
     });
 
     setSubmittedAmount(amount);
     setSuccess(true);
-    setFormData({ amount: "", duration: "", description: "" });
+    setFormData({ amount: "", duration: "", description: "", paymentMethodId: "pm-gcash" });
     
     setTimeout(() => {
       setSuccess(false);
@@ -208,6 +210,37 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
                   placeholder="Purpose of the loan..."
                   rows={3}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Receive funds to *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'pm-gcash', label: 'GCash', icon: '₱' },
+                    { id: 'pm-bank', label: 'Bank', icon: '🏦' },
+                    { id: 'pm-paypal', label: 'PayPal', icon: '₱' },
+                  ].map((method) => (
+                    <motion.button
+                      key={method.id}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, paymentMethodId: method.id })}
+                      className={`p-3 rounded-lg border-2 transition-all text-center ${
+                        formData.paymentMethodId === method.id
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="text-lg mb-1">{method.icon}</div>
+                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {method.label}
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
               </div>
 
               {error && (

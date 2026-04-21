@@ -17,7 +17,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [formData, setFormData] = useState({
     amount: "",
     loanId: "",
-    paymentMethod: "credit-card",
+    paymentMethod: "pm-gcash",
     description: "",
   });
 
@@ -33,7 +33,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       setFormData({
         amount: "",
         loanId: approvedLoans.length > 0 ? approvedLoans[0].id : "",
-        paymentMethod: "credit-card",
+        paymentMethod: "pm-gcash",
         description: "",
       });
       setError("");
@@ -88,10 +88,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     // Get payment method label
     const paymentMethodLabels: { [key: string]: string } = {
-      "credit-card": "Credit Card",
-      "debit-card": "Debit Card",
-      "bank-transfer": "Bank Transfer",
-      "e-wallet": "E-Wallet",
+      "pm-gcash": "GCash",
+      "pm-bank": "Bank Transfer",
+      "pm-paypal": "PayPal",
     };
 
     try {
@@ -99,7 +98,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       const success = processPayment(
         amount,
         formData.loanId,
-        paymentMethodLabels[formData.paymentMethod],
+        formData.paymentMethod,
         formData.description || "Monthly payment"
       );
 
@@ -108,7 +107,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         setFormData({
           amount: "",
           loanId: loans.length > 0 ? loans[0].id : "",
-          paymentMethod: "credit-card",
+          paymentMethod: "pm-gcash",
           description: "",
         });
         setTimeout(() => {
@@ -129,10 +128,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   if (!isOpen) return null;
 
   const paymentMethods = [
-    { id: "credit-card", label: "Credit Card", icon: CreditCard },
-    { id: "debit-card", label: "Debit Card", icon: CreditCard },
-    { id: "bank-transfer", label: "Bank Transfer", icon: Building2 },
-    { id: "e-wallet", label: "E-Wallet", icon: Wallet },
+    { id: "pm-gcash", label: "GCash", icon: Wallet },
+    { id: "pm-bank", label: "Bank Transfer", icon: Building2 },
+    { id: "pm-paypal", label: "PayPal", icon: Wallet },
   ];
 
   return (

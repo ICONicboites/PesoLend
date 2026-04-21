@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, LogOut, ArrowLeft } from "lucide-react";
-import { getUser, clearUser } from "../services/storage";
+import { User, Mail, Phone, LogOut, ArrowLeft, Sun, Moon } from "lucide-react";
+import { getUser, clearUser, getDarkMode, setDarkMode } from "../services/storage";
 
 interface UserData {
   id: string;
@@ -14,6 +14,7 @@ interface UserData {
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [darkMode, setDarkModeState] = useState(getDarkMode());
 
   useEffect(() => {
     const user = getUser();
@@ -27,6 +28,12 @@ export const ProfilePage = () => {
   const handleLogout = () => {
     clearUser();
     navigate("/login");
+  };
+
+  const handleToggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    setDarkModeState(newDarkMode);
   };
 
   if (!userData) {
@@ -123,6 +130,38 @@ export const ProfilePage = () => {
                 </div>
               </motion.div>
             )}
+
+            {/* Dark Mode Toggle */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                  {darkMode ? (
+                    <Moon size={20} className="text-purple-600 dark:text-purple-400" />
+                  ) : (
+                    <Sun size={20} className="text-purple-600 dark:text-purple-400" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Appearance</p>
+                  <p className="text-gray-800 dark:text-white font-medium">
+                    {darkMode ? 'Dark Mode' : 'Light Mode'}
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleDarkMode}
+                className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white hover:shadow-lg transition-all"
+              >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </motion.button>
+            </motion.div>
           </div>
 
           {/* Logout Button */}
