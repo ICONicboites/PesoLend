@@ -292,7 +292,7 @@ npm run build
 
 ## 📄 License
 
-PesoLend © 2024. All rights reserved.
+rivera bacolod © 2024. All rights reserved.
 
 ---
 

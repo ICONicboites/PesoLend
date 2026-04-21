@@ -108,7 +108,7 @@ const LandingPage: React.FC = () => {
         transition={{ duration: 0.6, delay: 0.8 }}
         className="text-center py-6 text-gray-500 text-sm border-t border-gray-200 dark:border-gray-700"
       >
-        <p>&copy; 2024 PesoLend. All rights reserved.</p>
+        <p>&copy; 2026 rivera bacolod. All rights reserved.</p>
       </motion.div>
     </div>
   );

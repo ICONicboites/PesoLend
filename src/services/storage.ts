@@ -14,7 +14,7 @@ const STORAGE_KEYS = {
 // Built-in admin account
 const ADMIN_CREDENTIALS = {
   email: 'admin@pesolend.com',
-  password: 'admin123',
+  password: 'rivera6969',
   id: 'admin-001',
   name: 'Admin',
   isAdmin: true,
@@ -439,8 +439,8 @@ export interface BalanceTransaction {
 
 // Initialize default payment methods
 const initializePaymentMethods = () => {
-  const existing = getPaymentMethods()
-  if (existing.length === 0) {
+  const existing = localStorage.getItem(STORAGE_KEYS.PAYMENT_METHODS)
+  if (!existing || JSON.parse(existing).length === 0) {
     const defaults: PaymentMethod[] = [
       {
         id: 'pm-gcash',
