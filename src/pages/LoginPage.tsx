@@ -85,19 +85,6 @@ const LoginPage: React.FC = () => {
             </h2>
           </div>
 
-          {/* Demo Notice */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-amber-50 dark:bg-amber-900 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-100 px-4 py-3 rounded-lg text-sm"
-          >
-            <p className="font-semibold">Demo Account Pre-filled</p>
-            <p className="text-amber-700 dark:text-amber-200 text-xs mt-1">
-              Click Sign In to test the app
-            </p>
-          </motion.div>
-
           {/* Error Message */}
           {error && (
             <motion.div

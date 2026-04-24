@@ -380,6 +380,9 @@ export const BalanceManagement = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Type
                     </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Description
+                    </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Amount
                     </th>
@@ -417,6 +420,9 @@ export const BalanceManagement = () => {
                           )}
                           {transaction.type}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                        {transaction.description}
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-semibold text-gray-800 dark:text-white">
                         {transaction.type === 'Deposit' || transaction.type === 'Payment' ? '+' : '-'}

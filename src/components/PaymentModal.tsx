@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, CreditCard, Wallet, Building2 } from "lucide-react";
 import { processPayment, getLoansList, Loan } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -21,15 +22,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     description: "",
   });
 
-  const [loans, setLoans] = useState<Loan[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Live-sync approved loans so new loans appear immediately
+  const { data: approvedLoans } = useStorageSync(
+    "pesolend_loans",
+    () => getLoansList().filter(l => l.status === 'Approved'),
+    3000
+  );
+
   useEffect(() => {
     if (isOpen) {
-      const approvedLoans = getLoansList().filter(l => l.status === 'Approved');
-      setLoans(approvedLoans);
       setFormData({
         amount: "",
         loanId: approvedLoans.length > 0 ? approvedLoans[0].id : "",
@@ -106,7 +111,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         setSuccess(true);
         setFormData({
           amount: "",
-          loanId: loans.length > 0 ? loans[0].id : "",
+          loanId: approvedLoans.length > 0 ? approvedLoans[0].id : "",
           paymentMethod: "pm-gcash",
           description: "",
         });
@@ -201,7 +206,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-gray-800 dark:text-white"
               >
                 <option value="">Choose a loan</option>
-                {loans.map((loan) => (
+                {approvedLoans.map((loan) => (
                   <option key={loan.id} value={loan.id}>
                     {loan.description} - ₱{loan.amount.toLocaleString()} ({loan.duration}mo)
                   </option>

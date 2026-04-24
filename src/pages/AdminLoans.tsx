@@ -1,50 +1,61 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
-import { getPendingLoans, updateLoanStatus, isAdmin, Loan, getRegisteredUsers } from "../services/storage";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, CheckCircle2, XCircle, Bell } from "lucide-react";
+import {
+  getPendingLoans,
+  updateLoanStatus,
+  isAdmin,
+  getRegisteredUsers,
+} from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 export const AdminLoans = () => {
   const navigate = useNavigate();
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [userMap, setUserMap] = useState<{ [key: string]: any }>({});
+
+  // Live-synced list — updates via storage event (cross-tab) and polling (same-tab)
+  const {
+    data: loans,
+    newCount,
+    clearAlert,
+  } = useStorageSync("pesolend_loans", getPendingLoans, 3000);
+
+  const { data: registeredUsers } = useStorageSync(
+    "pesolend_registered_users",
+    getRegisteredUsers,
+    10000,
+  );
+
+  const userMap: Record<string, { name: string; email: string }> =
+    Object.fromEntries(
+      registeredUsers.map((u) => [u.id, { name: u.name, email: u.email }]),
+    );
 
   useEffect(() => {
     if (!isAdmin()) {
       navigate("/dashboard");
-      return;
     }
-
-    const pendingLoans = getPendingLoans();
-    setLoans(pendingLoans);
-
-    // Create user map for quick lookup
-    const users = getRegisteredUsers();
-    const map: { [key: string]: any } = {};
-    users.forEach(user => {
-      map[user.id] = user;
-    });
-    setUserMap(map);
   }, [navigate]);
 
   const handleApprove = (loanId: string) => {
-    const loan = loans.find(l => l.id === loanId);
-    updateLoanStatus(loanId, 'Approved', loan?.paymentMethodId);
-    setLoans(loans.filter(l => l.id !== loanId));
+    const loan = loans.find((l) => l.id === loanId);
+    updateLoanStatus(loanId, "Approved", loan?.paymentMethodId);
+    // The list will auto-refresh on next poll; clear alert if open
+    clearAlert();
   };
 
   const handleReject = (loanId: string) => {
-    const loan = loans.find(l => l.id === loanId);
-    updateLoanStatus(loanId, 'Rejected', loan?.paymentMethodId);
-    setLoans(loans.filter(l => l.id !== loanId));
+    const loan = loans.find((l) => l.id === loanId);
+    updateLoanStatus(loanId, "Rejected", loan?.paymentMethodId);
+    clearAlert();
   };
 
   const getUserName = (userId: string) => {
-    return userMap[userId]?.name || 'Unknown User';
+    return userMap[userId]?.name || "Unknown User";
   };
 
   const getUserEmail = (userId: string) => {
-    return userMap[userId]?.email || 'N/A';
+    return userMap[userId]?.email || "N/A";
   };
 
   return (
@@ -71,6 +82,30 @@ export const AdminLoans = () => {
       </motion.div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* New loans banner */}
+        <AnimatePresence>
+          {newCount > 0 && (
+            <motion.div
+              key="new-loan-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center justify-between mb-6 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-xl"
+            >
+              <span className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-semibold">
+                <Bell size={18} className="animate-bounce" />
+                {newCount} new loan application{newCount !== 1 ? "s" : ""} just
+                arrived!
+              </span>
+              <button
+                onClick={clearAlert}
+                className="text-amber-600 dark:text-amber-300 hover:underline text-sm"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {loans.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -112,19 +147,25 @@ export const AdminLoans = () => {
                       </h3>
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Name:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Name:
+                          </span>
                           <span className="font-semibold text-gray-800 dark:text-white">
                             {getUserName(loan.userId)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Email:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Email:
+                          </span>
                           <span className="font-semibold text-gray-800 dark:text-white">
                             {getUserEmail(loan.userId)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">User ID:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            User ID:
+                          </span>
                           <span className="font-mono text-sm text-gray-500 dark:text-gray-500">
                             {loan.userId}
                           </span>
@@ -138,25 +179,33 @@ export const AdminLoans = () => {
                       </h3>
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Loan ID:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Loan ID:
+                          </span>
                           <span className="font-mono text-sm text-gray-500 dark:text-gray-500">
                             {loan.id}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Amount:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Amount:
+                          </span>
                           <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             ₱{loan.amount.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Duration:
+                          </span>
                           <span className="font-semibold text-gray-800 dark:text-white">
                             {loan.duration} months
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Applied On:</span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Applied On:
+                          </span>
                           <span className="text-gray-800 dark:text-white">
                             {new Date(loan.date).toLocaleDateString()}
                           </span>

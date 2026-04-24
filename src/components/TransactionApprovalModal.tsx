@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Transaction, updateTransactionStatus, getPaymentMethodById, getUser, getRegisteredUsers } from '../services/storage';
+import { Transaction, updateTransactionStatus, getPaymentMethodById, getUser, getRegisteredUsers, getLoanByIdAdmin, getLoanRemainingBalance } from '../services/storage';
 
 interface TransactionApprovalModalProps {
   isOpen: boolean;
@@ -26,6 +26,9 @@ export const TransactionApprovalModal = ({
   const paymentMethod = transaction.paymentMethodId
     ? getPaymentMethodById(transaction.paymentMethodId)
     : null;
+
+  const loan = transaction.loanId ? getLoanByIdAdmin(transaction.loanId) : null;
+  const loanRemainingBalance = transaction.loanId ? getLoanRemainingBalance(transaction.loanId) : 0;
 
   const users = getRegisteredUsers();
   const user = users.find(u => u.id === transaction.userId);
@@ -152,6 +155,22 @@ export const TransactionApprovalModal = ({
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Current Balance: {formatBalance(paymentMethod.available_balance)}
+              </p>
+            </div>
+          )}
+
+          {/* Loan Info */}
+          {loan && (
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Loan Details</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white mb-1">
+                {loan.description} - {loan.duration}mo
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                Original Amount: {formatBalance(loan.amount)}
+              </p>
+              <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                Remaining Balance: {formatBalance(loanRemainingBalance)}
               </p>
             </div>
           )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CreditCard, FileText, CheckCircle } from "lucide-react";
+import { CreditCard, FileText, CheckCircle, X } from "lucide-react";
 import { BottomNavigation } from "../components/BottomNavigation";
 import { LoanApplicationModal } from "../components/LoanApplicationModal";
 import { PaymentModal } from "../components/PaymentModal";
@@ -12,44 +12,54 @@ import {
   getActiveLoans,
   getAvailableCredit,
   getTotalPayments,
+  getOutstandingBalance,
   isAdmin,
-  Loan,
 } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const user = getUser();
-  const [userName, setUserName] = useState("");
-  const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
-  const [availableCredit, setAvailableCredit] = useState(0);
-  const [totalPayments, setTotalPayments] = useState(0);
   const [loanModalOpen, setLoanModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [dueDatesModalOpen, setDueDatesModalOpen] = useState(false);
+
+  // Live-synced: updates when Admin approves/rejects loans or transactions change
+  const { data: activeLoans } = useStorageSync("pesolend_loans", getActiveLoans, 3000);
+  const { data: availableCredit } = useStorageSync("pesolend_transactions", getAvailableCredit, 3000);
+  const { data: totalPayments } = useStorageSync("pesolend_transactions", getTotalPayments, 3000);
+  const { data: outstandingBalance } = useStorageSync("pesolend_transactions", getOutstandingBalance, 3000);
+
+  const userName = user?.name ?? "";
 
   useEffect(() => {
-    // Redirect admin users to admin dashboard
     if (isAdmin()) {
       navigate("/admin");
-      return;
     }
-
-    if (user) {
-      setUserName(user.name);
-    }
-    // Fetch real data from storage
-    const loans = getActiveLoans();
-    setActiveLoans(loans);
-    setAvailableCredit(getAvailableCredit());
-    setTotalPayments(getTotalPayments());
-  }, [user, refreshTrigger, navigate]);
+  }, [navigate]);
 
   const formatPeso = (amount: number) =>
     `₱ ${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 15);
-  const dueDateStr = dueDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const getLoanDueDate = (appliedDate: string, durationMonths: number) => {
+    const due = new Date(appliedDate);
+    due.setMonth(due.getMonth() + durationMonths);
+    return due;
+  };
+
+  const sortedDueLoans = [...activeLoans].sort((a, b) => {
+    const aDue = getLoanDueDate(a.date, a.duration).getTime();
+    const bDue = getLoanDueDate(b.date, b.duration).getTime();
+    return aDue - bDue;
+  });
+
+  const nearestDueDate = sortedDueLoans[0]
+    ? getLoanDueDate(sortedDueLoans[0].date, sortedDueLoans[0].duration)
+    : null;
+
+  const nearestDueDateStr = nearestDueDate
+    ? nearestDueDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+    : "No active due date";
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-32 transition-colors duration-200">
@@ -91,17 +101,28 @@ const DashboardPage: React.FC = () => {
             <CreditCard size={40} className="opacity-80" />
           </div>
 
-          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-amber-400">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-amber-400">
+            <div>
+              <p className="text-amber-100 text-sm mb-1">Remaining Balance</p>
+              <p className="text-2xl font-bold">
+                {formatPeso(outstandingBalance)}
+              </p>
+            </div>
             <div>
               <p className="text-amber-100 text-sm mb-1">Total Paid</p>
               <p className="text-2xl font-bold">
                 {formatPeso(totalPayments)}
               </p>
             </div>
-            <div>
+            <button
+              type="button"
+              onClick={() => setDueDatesModalOpen(true)}
+              className="text-left rounded-lg p-2 -m-2 md:col-span-2 hover:bg-amber-400/30 transition-colors"
+            >
               <p className="text-amber-100 text-sm mb-1">Due Date</p>
-              <p className="text-2xl font-bold">{dueDateStr}</p>
-            </div>
+              <p className="text-2xl font-bold">{nearestDueDateStr}</p>
+              <p className="text-amber-100 text-xs mt-1 underline">Tap to view all due loans</p>
+            </button>
           </div>
         </motion.div>
 
@@ -153,7 +174,7 @@ const DashboardPage: React.FC = () => {
                 <LoanCard
                   key={loan.id}
                   loan={loan}
-                  onStatusChange={() => setRefreshTrigger(prev => prev + 1)}
+                  onStatusChange={() => {}}
                 />
               ))}
             </div>
@@ -201,16 +222,81 @@ const DashboardPage: React.FC = () => {
         onClose={() => setLoanModalOpen(false)}
         onSubmit={() => {
           setLoanModalOpen(false);
-          setRefreshTrigger(prev => prev + 1);
         }}
       />
       <PaymentModal
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        onSuccess={() => {
-          setRefreshTrigger(prev => prev + 1);
-        }}
+        onSuccess={() => {}}
       />
+
+      {dueDatesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setDueDatesModalOpen(false)}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700"
+          >
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">All Due-Date Loans</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loans with their expected due dates</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDueDatesModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <X size={20} className="text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3">
+              {sortedDueLoans.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-600 dark:text-gray-400 font-medium">No active loans with due dates yet.</p>
+                </div>
+              ) : (
+                sortedDueLoans.map((loan) => {
+                  const dueDate = getLoanDueDate(loan.date, loan.duration);
+                  return (
+                    <div
+                      key={loan.id}
+                      className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/40"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-bold text-gray-900 dark:text-white">{formatPeso(loan.amount)}</p>
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                          {loan.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400">Loan ID</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-right">{loan.id}</p>
+                        <p className="text-gray-600 dark:text-gray-400">Duration</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-right">{loan.duration} months</p>
+                        <p className="text-gray-600 dark:text-gray-400">Applied</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-right">
+                          {new Date(loan.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400">Due Date</p>
+                        <p className="text-amber-600 dark:text-amber-400 font-bold text-right">
+                          {dueDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       <BottomNavigation />

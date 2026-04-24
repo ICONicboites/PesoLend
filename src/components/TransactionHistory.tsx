@@ -1,6 +1,7 @@
 import { getTransactions } from "../services/storage";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 interface TransactionHistoryProps {
   filterType?: "All" | "Disbursement" | "Payment";
@@ -9,7 +10,8 @@ interface TransactionHistoryProps {
 export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   filterType = "All",
 }) => {
-  const transactions = getTransactions();
+  // Live-synced: reflects new payments and disbursements without page refresh
+  const { data: transactions } = useStorageSync("pesolend_transactions", getTransactions, 3000);
 
   const filteredTransactions = transactions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

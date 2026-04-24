@@ -1,26 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navbar } from "../components/Navbar";
 import { TransactionHistory } from "../components/TransactionHistory";
 import { BottomNavigation } from "../components/BottomNavigation";
 import { motion } from "framer-motion";
 import { Download } from "lucide-react";
-import { getUser, getTransactions, getTotalPayments, getTotalDisbursed } from "../services/storage";
+import { getUser, getTransactions } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 const TransactionsPage: React.FC = () => {
   const user = getUser();
   const [filterType, setFilterType] = useState<
     "All" | "Disbursement" | "Payment"
   >("All");
-  const [totalTransactions, setTotalTransactions] = useState(0);
-  const [totalDisbursedAmount, setTotalDisbursedAmount] = useState(0);
-  const [totalPaidAmount, setTotalPaidAmount] = useState(0);
 
-  useEffect(() => {
-    const transactions = getTransactions();
-    setTotalTransactions(transactions.length);
-    setTotalDisbursedAmount(getTotalDisbursed());
-    setTotalPaidAmount(getTotalPayments());
-  }, []);
+  // Live-synced: auto-updates when new transactions are recorded
+  const { data: transactions } = useStorageSync("pesolend_transactions", getTransactions, 3000);
+  const totalTransactions = transactions.length;
+  const totalDisbursedAmount = transactions
+    .filter((t) => t.type === "Disbursement")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalPaidAmount = transactions
+    .filter((t) => t.type === "Payment")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const outstandingBalance = Math.max(0, totalDisbursedAmount - totalPaidAmount);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32">
@@ -86,7 +88,7 @@ const TransactionsPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+          className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8"
         >
           <div className="card">
             <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
@@ -110,6 +112,14 @@ const TransactionsPage: React.FC = () => {
             </p>
             <h3 className="text-3xl font-bold text-blue-600">
               ₱{totalPaidAmount.toLocaleString()}
+            </h3>
+          </div>
+          <div className="card">
+            <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
+              Remaining Balance
+            </p>
+            <h3 className="text-3xl font-bold text-amber-600">
+              ₱{outstandingBalance.toLocaleString()}
             </h3>
           </div>
         </motion.div>

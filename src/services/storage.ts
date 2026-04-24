@@ -61,6 +61,10 @@ export const addLoan = (loan: Omit<Loan, 'id' | 'date' | 'userId'>) => {
   loans.push(newLoan)
   localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loans))
   addActivity(`Applied for a ₱${loan.amount.toLocaleString()} loan`)
+  addActivityForUser(
+    ADMIN_CREDENTIALS.id,
+    `${user.name} applied for a ₱${loan.amount.toLocaleString()} loan`
+  )
   return newLoan
 }
 
@@ -83,34 +87,39 @@ export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' 
   const loans = getAllLoans()
   const loan = loans.find(l => l.id === loanId)
   if (loan) {
+    const previousStatus = loan.status // Save before modifying
     loan.status = status
     if (paymentMethodId) {
       loan.paymentMethodId = paymentMethodId
     }
     
-    // Transfer funds when loan is approved
-    if (status === 'Approved' && loan.paymentMethodId) {
+    // Transfer funds OUT when loan is approved (admin lends money to customer)
+    if (status === 'Approved' && previousStatus !== 'Approved' && loan.paymentMethodId) {
       const selectedMethod = loan.paymentMethodId
       deductFromPaymentMethod(selectedMethod, loan.amount)
       
-      // Create disbursement transaction
-      const transaction = addTransaction({
+      // Create disbursement transaction record
+      addTransaction({
         type: 'Disbursement',
         amount: loan.amount,
         loanId,
         paymentMethodId: selectedMethod,
-        description: `Loan disbursement to ${selectedMethod}`,
+        description: `Loan disbursement via ${selectedMethod}`,
         status: 'Approved'
       })
       
-      addActivity(`Loan #${loanId} approved and ₱${loan.amount.toLocaleString()} disbursed to ${selectedMethod}`)
+      // Notify the customer
+      addActivityForUser(loan.userId, `Your loan of ₱${loan.amount.toLocaleString()} has been approved and disbursed`)
+      addActivity(`Loan #${loanId} approved — ₱${loan.amount.toLocaleString()} disbursed`)
     }
     
-    // Add back funds when loan is rejected
-    if (status === 'Rejected' && loan.paymentMethodId) {
-      addToPaymentMethod(loan.paymentMethodId, loan.amount)
-      addActivity(`Loan #${loanId} rejected`)
-    } else if (status === 'Rejected') {
+    // Only reverse funds if the loan was previously Approved (rollback disbursement)
+    if (status === 'Rejected') {
+      if (previousStatus === 'Approved' && loan.paymentMethodId) {
+        // Funds were already sent out — add them back
+        addToPaymentMethod(loan.paymentMethodId, loan.amount)
+      }
+      addActivityForUser(loan.userId, `Your loan application of ₱${loan.amount.toLocaleString()} has been rejected`)
       addActivity(`Loan #${loanId} rejected`)
     }
     
@@ -355,27 +364,40 @@ export const processPayment = (
   }
 
   try {
-    // Deduct from payment method balance
-    const paymentMethodId = paymentMethod.includes('pm-') ? paymentMethod : 'pm-gcash'
-    const deducted = deductFromPaymentMethod(paymentMethodId, amount)
-    
-    if (!deducted) {
-      console.error('Insufficient balance in payment method')
+    const loans = getAllLoans()
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan || loan.status !== 'Approved') {
+      return false
+    }
+
+    // Return payment to the same wallet used for disbursement (borrow wallet)
+    const disbursementWalletId = loan.paymentMethodId || 'pm-gcash'
+    const credited = addToPaymentMethod(disbursementWalletId, amount)
+    if (!credited) {
       return false
     }
     
-    // Add payment transaction
+    // Record the payment transaction
     const transaction = addTransaction({
       type: 'Payment',
       amount,
       loanId,
-      paymentMethodId: paymentMethodId,
+      paymentMethodId: disbursementWalletId,
       description: `Payment - ${description} (${paymentMethod})`,
       status: 'Approved'
     })
 
     // Add activity log
     addActivity(`Made a payment of ₱${amount.toLocaleString()} via ${paymentMethod}`)
+    if (loan.userId) {
+      const users = getRegisteredUsers()
+      const borrower = users.find(u => u.id === loan.userId)
+      const payerName = borrower?.name || 'Customer'
+      addActivityForUser(
+        ADMIN_CREDENTIALS.id,
+        `${payerName} paid ₱${amount.toLocaleString()} for loan #${loanId}`
+      )
+    }
 
     return !!transaction
   } catch (error) {
@@ -390,11 +412,30 @@ export const getLoanById = (loanId: string): Loan | undefined => {
   return loans.find(l => l.id === loanId)
 }
 
+// Get loan by ID (admin version - all loans)
+export const getLoanByIdAdmin = (loanId: string): Loan | undefined => {
+  const loans = getAllLoans()
+  return loans.find(l => l.id === loanId)
+}
+
+// Get remaining balance for a specific loan
+export const getLoanRemainingBalance = (loanId: string): number => {
+  const loan = getLoanByIdAdmin(loanId)
+  if (!loan || loan.status !== 'Approved') return 0
+  
+  const transactions = getAllTransactions()
+  const payments = transactions
+    .filter(t => t.loanId === loanId && t.type === 'Payment' && t.status === 'Approved')
+    .reduce((sum, t) => sum + t.amount, 0)
+  
+  return Math.max(0, loan.amount - payments)
+}
+
 // Get total disbursed amount
 export const getTotalDisbursed = (): number => {
   const transactions = getTransactions()
   return transactions
-    .filter(t => t.type === 'Disbursement')
+    .filter(t => t.type === 'Disbursement' && t.status === 'Approved')
     .reduce((sum, t) => sum + t.amount, 0)
 }
 
@@ -402,16 +443,46 @@ export const getTotalDisbursed = (): number => {
 export const getTotalPayments = (): number => {
   const transactions = getTransactions()
   return transactions
-    .filter(t => t.type === 'Payment')
+    .filter(t => t.type === 'Payment' && t.status === 'Approved')
     .reduce((sum, t) => sum + t.amount, 0)
+}
+
+// Total amount the bank has already lent to the current user.
+export const getBorrowedBalance = (): number => {
+  return getTotalDisbursed()
+}
+
+// Remaining debt = borrowed amount - total payments made.
+export const getOutstandingBalance = (): number => {
+  return Math.max(0, getBorrowedBalance() - getTotalPayments())
+}
+
+// ====== ADMIN-FACING FINANCIAL METRICS ======
+
+// Total amount lent out to ALL customers (sum of approved Disbursements)
+export const getAdminTotalDisbursed = (): number => {
+  return getAllTransactions()
+    .filter(t => t.type === 'Disbursement' && t.status === 'Approved')
+    .reduce((sum, t) => sum + t.amount, 0)
+}
+
+// Total payments collected back from ALL customers (sum of approved Payments)
+export const getAdminTotalCollected = (): number => {
+  return getAllTransactions()
+    .filter(t => t.type === 'Payment' && t.status === 'Approved')
+    .reduce((sum, t) => sum + t.amount, 0)
+}
+
+// Net amount still owed by all customers (disbursed - collected, min 0)
+export const getAdminOutstandingDebt = (): number => {
+  return Math.max(0, getAdminTotalDisbursed() - getAdminTotalCollected())
 }
 
 // Get available credit (fixed amount - total disbursed + total payments)
 export const getAvailableCredit = (): number => {
   const totalCredit = 100000 // Default available credit
-  const totalDisbursed = getTotalDisbursed()
-  const totalPayments = getTotalPayments()
-  return totalCredit - totalDisbursed + totalPayments
+  const remainingDebt = getOutstandingBalance()
+  return Math.min(totalCredit, Math.max(0, totalCredit - remainingDebt))
 }
 
 // Get active loans
@@ -744,11 +815,13 @@ export const getFilteredTransactions = (filters: {
   }
 
   if (filters.startDate) {
-    transactions = transactions.filter(t => t.date >= filters.startDate)
+    const start = filters.startDate
+    transactions = transactions.filter(t => t.date >= start)
   }
 
   if (filters.endDate) {
-    transactions = transactions.filter(t => t.date <= filters.endDate)
+    const end = filters.endDate
+    transactions = transactions.filter(t => t.date <= end)
   }
 
   return transactions

@@ -1,8 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { CheckCircle2, XCircle, MessageSquare, Clock, LogOut, Wallet, BarChart3 } from "lucide-react";
-import { getAllSupportTickets, getPendingLoans, isAdmin, clearUser, Loan, getTotalSystemBalance, getAllTransactions } from "../services/storage";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  CheckCircle2,
+  MessageSquare,
+  Clock,
+  LogOut,
+  Wallet,
+  Bell,
+  TrendingDown,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
+import {
+  getAllSupportTickets,
+  getPendingLoans,
+  isAdmin,
+  clearUser,
+  getTotalSystemBalance,
+  getAdminTotalDisbursed,
+  getAdminTotalCollected,
+  getAdminOutstandingDebt,
+} from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
+import { ActivityLog } from "../components/ActivityLog";
 
 interface TicketSummary {
   open: number;
@@ -12,37 +33,59 @@ interface TicketSummary {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [pendingLoans, setPendingLoans] = useState<Loan[]>([]);
-  const [ticketStats, setTicketStats] = useState<TicketSummary>({
-    open: 0,
-    inProgress: 0,
-    resolved: 0,
-  });
-  const [systemBalance, setSystemBalance] = useState<number>(0);
-  const [pendingTransactions, setPendingTransactions] = useState<number>(0);
+
+  // useStorageSync watches each key via storage events (cross-tab) + polling (same-tab)
+  const {
+    data: pendingLoans,
+    newCount: newLoanCount,
+    clearAlert,
+  } = useStorageSync("pesolend_loans", getPendingLoans, 3000);
+
+  const { data: allTickets } = useStorageSync(
+    "pesolend_support_tickets",
+    getAllSupportTickets,
+    5000,
+  );
+
+  const { data: systemBalance } = useStorageSync(
+    "pesolend_payment_methods",
+    getTotalSystemBalance,
+    5000,
+  );
+
+  const { data: totalDisbursed } = useStorageSync(
+    "pesolend_transactions",
+    getAdminTotalDisbursed,
+    5000,
+  );
+
+  const { data: totalCollected } = useStorageSync(
+    "pesolend_transactions",
+    getAdminTotalCollected,
+    5000,
+  );
+
+  const { data: outstandingDebt } = useStorageSync(
+    "pesolend_transactions",
+    getAdminOutstandingDebt,
+    5000,
+  );
+
+  const ticketStats: TicketSummary = {
+    open: allTickets.filter((t: { status: string }) => t.status === "Open")
+      .length,
+    inProgress: allTickets.filter(
+      (t: { status: string }) => t.status === "In Progress",
+    ).length,
+    resolved: allTickets.filter(
+      (t: { status: string }) => t.status === "Resolved",
+    ).length,
+  };
 
   useEffect(() => {
     if (!isAdmin()) {
       navigate("/dashboard");
-      return;
     }
-
-    const loans = getPendingLoans();
-    setPendingLoans(loans);
-
-    const tickets = getAllSupportTickets();
-    setTicketStats({
-      open: tickets.filter(t => t.status === 'Open').length,
-      inProgress: tickets.filter(t => t.status === 'In Progress').length,
-      resolved: tickets.filter(t => t.status === 'Resolved').length,
-    });
-
-    const balance = getTotalSystemBalance();
-    setSystemBalance(balance);
-
-    const transactions = getAllTransactions();
-    const pending = transactions.filter(t => t.status === 'Pending').length;
-    setPendingTransactions(pending);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -87,109 +130,131 @@ export const AdminDashboard = () => {
           className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
         >
           {/* Pending Loans */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
+          <motion.div whileHover={{ scale: 1.05 }} className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Pending Loans</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Pending Loans
+                </p>
                 <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
                   {pendingLoans.length}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                <Clock size={24} className="text-yellow-600 dark:text-yellow-400" />
+              <div className="relative w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                <Clock
+                  size={24}
+                  className="text-yellow-600 dark:text-yellow-400"
+                />
+                <AnimatePresence>
+                  {newLoanCount > 0 && (
+                    <motion.span
+                      key="badge"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                    >
+                      {newLoanCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </motion.div>
 
           {/* Open Tickets */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
+          <motion.div whileHover={{ scale: 1.05 }} className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Open Tickets</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Open Tickets
+                </p>
                 <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
                   {ticketStats.open}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <MessageSquare size={24} className="text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* In Progress Tickets */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">In Progress</p>
-                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
-                  {ticketStats.inProgress}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
-                <Clock size={24} className="text-orange-600 dark:text-orange-400" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Resolved Tickets */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Resolved</p>
-                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
-                  {ticketStats.resolved}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <CheckCircle2 size={24} className="text-green-600 dark:text-green-400" />
+                <MessageSquare
+                  size={24}
+                  className="text-blue-600 dark:text-blue-400"
+                />
               </div>
             </div>
           </motion.div>
 
           {/* System Balance */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
+          <motion.div whileHover={{ scale: 1.05 }} className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">System Balance</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  System Balance
+                </p>
                 <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
-                  ₱{systemBalance.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                  ₱
+                  {systemBalance.toLocaleString("en-PH", {
+                    maximumFractionDigits: 0,
+                  })}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <Wallet size={24} className="text-green-600 dark:text-green-400" />
+                <Wallet
+                  size={24}
+                  className="text-green-600 dark:text-green-400"
+                />
               </div>
             </div>
           </motion.div>
 
-          {/* Pending Transactions */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card"
-          >
+          {/* Total Lent Out */}
+          <motion.div whileHover={{ scale: 1.05 }} className="card border-l-4 border-red-400">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Pending Transactions</p>
-                <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
-                  {pendingTransactions}
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Total Lent Out
                 </p>
+                <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
+                  ₱{totalDisbursed.toLocaleString("en-PH", { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Money disbursed to customers</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                <BarChart3 size={24} className="text-purple-600 dark:text-purple-400" />
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                <TrendingDown size={24} className="text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Total Collected */}
+          <motion.div whileHover={{ scale: 1.05 }} className="card border-l-4 border-green-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Total Collected
+                </p>
+                <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
+                  ₱{totalCollected.toLocaleString("en-PH", { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Payments received from customers</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                <TrendingUp size={24} className="text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Outstanding Debt */}
+          <motion.div whileHover={{ scale: 1.05 }} className="card border-l-4 border-amber-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Outstanding Debt
+                </p>
+                <p className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+                  ₱{outstandingDebt.toLocaleString("en-PH", { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total still owed by all customers</p>
+              </div>
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
+                <AlertCircle size={24} className="text-amber-600 dark:text-amber-400" />
               </div>
             </div>
           </motion.div>
@@ -206,12 +271,39 @@ export const AdminDashboard = () => {
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                <Clock size={20} className="text-yellow-600 dark:text-yellow-400" />
+                <Clock
+                  size={20}
+                  className="text-yellow-600 dark:text-yellow-400"
+                />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
                 Pending Loans ({pendingLoans.length})
               </h2>
             </div>
+
+            <AnimatePresence>
+              {newLoanCount > 0 && (
+                <motion.div
+                  key="new-alert"
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-sm"
+                >
+                  <span className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium">
+                    <Bell size={16} className="animate-bounce" />
+                    {newLoanCount} new loan{newLoanCount !== 1 ? "s" : ""}{" "}
+                    submitted
+                  </span>
+                  <button
+                    onClick={clearAlert}
+                    className="text-red-400 hover:text-red-600 dark:hover:text-red-200 text-xs underline"
+                  >
+                    Dismiss
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {pendingLoans.length === 0 ? (
               <motion.div
@@ -219,7 +311,10 @@ export const AdminDashboard = () => {
                 animate={{ opacity: 1 }}
                 className="text-center py-12"
               >
-                <CheckCircle2 size={40} className="mx-auto mb-3 text-green-400" />
+                <CheckCircle2
+                  size={40}
+                  className="mx-auto mb-3 text-green-400"
+                />
                 <p className="text-gray-500 dark:text-gray-400">
                   All loans have been reviewed!
                 </p>
@@ -228,10 +323,14 @@ export const AdminDashboard = () => {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => navigate("/admin/loans")}
+                onClick={() => {
+                  clearAlert();
+                  navigate("/admin/loans");
+                }}
                 className="w-full py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-lg font-bold hover:shadow-lg transition-all"
               >
-                Review {pendingLoans.length} Pending Loan{pendingLoans.length !== 1 ? 's' : ''}
+                Review {pendingLoans.length} Pending Loan
+                {pendingLoans.length !== 1 ? "s" : ""}
               </motion.button>
             )}
           </motion.div>
@@ -245,7 +344,10 @@ export const AdminDashboard = () => {
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <MessageSquare size={20} className="text-blue-600 dark:text-blue-400" />
+                <MessageSquare
+                  size={20}
+                  className="text-blue-600 dark:text-blue-400"
+                />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
                 Support Tickets ({ticketStats.open + ticketStats.inProgress})
@@ -258,7 +360,10 @@ export const AdminDashboard = () => {
                 animate={{ opacity: 1 }}
                 className="text-center py-12"
               >
-                <CheckCircle2 size={40} className="mx-auto mb-3 text-green-400" />
+                <CheckCircle2
+                  size={40}
+                  className="mx-auto mb-3 text-green-400"
+                />
                 <p className="text-gray-500 dark:text-gray-400">
                   All tickets have been handled!
                 </p>
@@ -270,7 +375,8 @@ export const AdminDashboard = () => {
                 onClick={() => navigate("/admin/support")}
                 className="w-full py-4 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-lg font-bold hover:shadow-lg transition-all"
               >
-                Handle {ticketStats.open + ticketStats.inProgress} Ticket{ticketStats.open + ticketStats.inProgress !== 1 ? 's' : ''}
+                Handle {ticketStats.open + ticketStats.inProgress} Ticket
+                {ticketStats.open + ticketStats.inProgress !== 1 ? "s" : ""}
               </motion.button>
             )}
           </motion.div>
@@ -286,7 +392,7 @@ export const AdminDashboard = () => {
           <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
             Quick Access
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -329,22 +435,16 @@ export const AdminDashboard = () => {
                 Configure payment methods and approve transactions
               </p>
             </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate("/admin/audit-log")}
-              className="p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-400 rounded-lg text-left transition-colors"
-            >
-              <div className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                <BarChart3 size={18} />
-                Audit Log
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                View transaction history and fund flow
-              </p>
-            </motion.button>
           </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8"
+        >
+          <ActivityLog limit={8} showHeader />
         </motion.div>
       </div>
     </div>

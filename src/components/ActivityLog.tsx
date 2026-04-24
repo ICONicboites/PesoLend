@@ -1,6 +1,7 @@
 import { getActivities } from "../services/storage";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 interface ActivityLogProps {
   limit?: number;
@@ -8,7 +9,8 @@ interface ActivityLogProps {
 }
 
 export const ActivityLog: React.FC<ActivityLogProps> = ({ limit = 5, showHeader = false }) => {
-  const activities = getActivities();
+  // Live-synced: auto-updates when loan applications, payments or status changes happen
+  const { data: activities } = useStorageSync("pesolend_activities", getActivities, 3000);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);

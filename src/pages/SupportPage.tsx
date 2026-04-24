@@ -1,70 +1,75 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, MessageCircle, Phone, Mail, ChevronDown } from "lucide-react";
-
-interface FAQItem {
-  id: number;
-  question: string;
-  answer: string;
-}
-
-const faqItems: FAQItem[] = [
-  {
-    id: 1,
-    question: "How do I apply for a loan?",
-    answer: "To apply for a loan, go to your Dashboard and click the 'Apply for Loan' button. Fill in the loan amount (minimum ₱1,000), duration (1-60 months), and submit. Your loan will be reviewed and either approved or rejected.",
-  },
-  {
-    id: 2,
-    question: "What is the maximum loan amount I can apply for?",
-    answer: "The maximum loan amount depends on your available credit limit, which is calculated based on your current loans and payment history. You can check your available credit on the Dashboard.",
-  },
-  {
-    id: 3,
-    question: "How long does it take to get a loan approved?",
-    answer: "Loan applications are processed instantly. You'll see the approval or rejection status immediately after submission. Once approved, the funds are available for payment.",
-  },
-  {
-    id: 4,
-    question: "What payment methods are available?",
-    answer: "We accept multiple payment methods including Credit Card, Debit Card, Bank Transfer, and E-Wallet. You can select your preferred payment method when making a payment.",
-  },
-  {
-    id: 5,
-    question: "Can I pay my loan early?",
-    answer: "Yes, you can pay your loan at any time. There are no early payment penalties. Your available credit will be updated immediately after payment.",
-  },
-  {
-    id: 6,
-    question: "How do I check my transaction history?",
-    answer: "Click the 'Activity' button in the bottom navigation to view your complete transaction history with all disbursements and payments.",
-  },
-  {
-    id: 7,
-    question: "Is my account information secure?",
-    answer: "Yes, your data is stored securely in your browser's local storage. We recommend keeping your login credentials confidential and logging out after each session.",
-  },
-  {
-    id: 8,
-    question: "How do I reset my password?",
-    answer: "Currently, you'll need to contact our support team to reset your password. Please provide your registered email address.",
-  },
-];
+import { ArrowLeft, MessageCircle, Send, Clock } from "lucide-react";
+import {
+  addTicketReply,
+  createSupportTicket,
+  getUserSupportTickets,
+  SupportTicket,
+} from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 export const SupportPage = () => {
   const navigate = useNavigate();
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [subject, setSubject] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  const { data: userTickets } = useStorageSync(
+    "pesolend_support_tickets",
+    getUserSupportTickets,
+    1000,
+  );
+
+  const tickets = useMemo(
+    () => [...userTickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [userTickets],
+  );
+
+  const selectedTicket: SupportTicket | null = useMemo(() => {
+    if (!selectedTicketId) {
+      return tickets[0] ?? null;
+    }
+    return tickets.find((t) => t.id === selectedTicketId) ?? tickets[0] ?? null;
+  }, [tickets, selectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId && tickets.length > 0) {
+      setSelectedTicketId(tickets[0].id);
+    }
+  }, [tickets, selectedTicketId]);
+
+  const handleCreateTicket = () => {
+    if (!subject.trim() || !newMessage.trim()) return;
+
+    const ticket = createSupportTicket({
+      subject: subject.trim(),
+      message: newMessage.trim(),
+    });
+
+    if (ticket) {
+      setSelectedTicketId(ticket.id);
+      setSubject("");
+      setNewMessage("");
+    }
+  };
+
+  const handleReply = () => {
+    if (!selectedTicket || !replyText.trim() || selectedTicket.status === "Resolved") return;
+    addTicketReply(selectedTicket.id, "user", replyText.trim());
+    setReplyText("");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pb-24">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10"
       >
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-3">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -73,169 +78,153 @@ export const SupportPage = () => {
           >
             <ArrowLeft size={24} className="text-gray-700 dark:text-gray-300" />
           </motion.button>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-            Help & Support
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Support Chat</h1>
         </div>
       </motion.div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Support Cards */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+          className="card mb-6"
         >
-          {/* Contact Support */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card flex flex-col items-center text-center hover:shadow-lg transition-shadow"
-          >
-            <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
-              <MessageCircle size={28} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">
-              Chat Support
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
-              Get instant help from our support team
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="btn-primary w-full text-sm"
-            >
-              Start Chat
-            </motion.button>
-          </motion.div>
-
-          {/* Call Support */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card flex flex-col items-center text-center hover:shadow-lg transition-shadow"
-          >
-            <div className="w-14 h-14 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-              <Phone size={28} className="text-green-600 dark:text-green-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">
-              Call Us
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
-              Available 24/7 for phone support
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="btn-primary w-full text-sm"
-            >
-              1-800-PESOLEND
-            </motion.button>
-          </motion.div>
-
-          {/* Email Support */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="card flex flex-col items-center text-center hover:shadow-lg transition-shadow"
-          >
-            <div className="w-14 h-14 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mb-4">
-              <Mail size={28} className="text-orange-600 dark:text-orange-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">
-              Email Support
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
-              Send us a detailed message
-            </p>
-            <motion.a
-              href="mailto:support@pesolend.com"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="btn-primary w-full text-sm"
-            >
-              Email Us
-            </motion.a>
-          </motion.div>
-        </motion.div>
-
-        {/* FAQ Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="card"
-        >
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Find answers to common questions about PesoLend
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {faqItems.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
-              >
-                <motion.button
-                  onClick={() =>
-                    setExpandedId(expandedId === item.id ? null : item.id)
-                  }
-                  className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <span className="text-left font-semibold text-gray-800 dark:text-white">
-                    {item.question}
-                  </span>
-                  <motion.div
-                    animate={{ rotate: expandedId === item.id ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ChevronDown size={20} className="text-gray-500" />
-                  </motion.div>
-                </motion.button>
-
-                <motion.div
-                  initial={false}
-                  animate={{ height: expandedId === item.id ? "auto" : 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden border-t border-gray-200 dark:border-gray-700"
-                >
-                  <div className="px-4 py-4 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30">
-                    {item.answer}
-                  </div>
-                </motion.div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Documentation Link */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-6 card text-center"
-        >
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">
-            Need More Help?
-          </h3>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Start New Support Message</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Check our complete documentation for detailed guides and tutorials
+            Send a message and admin will see it instantly.
           </p>
-          <motion.a
-            href="#"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-block px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-          >
-            Read Documentation
-          </motion.a>
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Subject (e.g., Payment issue)"
+              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"
+            />
+            <textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Describe your concern"
+              rows={4}
+              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"
+            />
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCreateTicket}
+              disabled={!subject.trim() || !newMessage.trim()}
+              className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              Send to Admin
+            </motion.button>
+          </div>
         </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="lg:col-span-1"
+          >
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-3">
+              My Tickets ({tickets.length})
+            </h3>
+            <div className="space-y-2">
+              {tickets.length === 0 ? (
+                <div className="card text-center py-8">
+                  <MessageCircle size={28} className="mx-auto mb-3 text-gray-400" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No messages yet</p>
+                </div>
+              ) : (
+                tickets.map((ticket) => (
+                  <button
+                    key={ticket.id}
+                    onClick={() => setSelectedTicketId(ticket.id)}
+                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      selectedTicket?.id === ticket.id
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-800 dark:text-white truncate">{ticket.subject}</p>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{ticket.status}</span>
+                      <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="lg:col-span-2 card"
+          >
+            {!selectedTicket ? (
+              <div className="text-center py-16">
+                <MessageCircle size={40} className="mx-auto mb-3 text-gray-400" />
+                <p className="text-gray-600 dark:text-gray-400">Select a ticket to open chat</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">{selectedTicket.subject}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Status: {selectedTicket.status}
+                  </p>
+                </div>
+
+                <div className="mb-4 max-h-80 overflow-y-auto space-y-4">
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                    <p className="text-xs text-gray-500 mb-1">You • {new Date(selectedTicket.createdAt).toLocaleString()}</p>
+                    <p className="text-gray-800 dark:text-gray-200">{selectedTicket.message}</p>
+                  </div>
+
+                  {selectedTicket.replies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className={`p-3 rounded-lg ${
+                        reply.from === "admin"
+                          ? "bg-green-50 dark:bg-green-900/20"
+                          : "bg-blue-50 dark:bg-blue-900/20"
+                      }`}
+                    >
+                      <p className="text-xs text-gray-500 mb-1">
+                        {reply.from === "admin" ? "Admin" : "You"} • {new Date(reply.timestamp).toLocaleString()}
+                      </p>
+                      <p className="text-gray-800 dark:text-gray-200">{reply.message}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {selectedTicket.status !== "Resolved" ? (
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleReply()}
+                      placeholder="Type message"
+                      className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"
+                    />
+                    <button
+                      onClick={handleReply}
+                      disabled={!replyText.trim()}
+                      className="px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    <Clock size={16} /> This ticket is resolved.
+                  </p>
+                )}
+              </>
+            )}
+          </motion.div>
+        </div>
       </div>
     </div>
   );
