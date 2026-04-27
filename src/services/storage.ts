@@ -20,6 +20,29 @@ const ADMIN_CREDENTIALS = {
   isAdmin: true,
 }
 
+const INITIAL_CREDIT_LIMIT = 50000
+const CREDIT_LIMIT_INCREMENT = 50000
+
+const getApprovedLoansByUser = (userId: string): Loan[] => {
+  return getAllLoans().filter((loan) => loan.userId === userId && loan.status === 'Approved')
+}
+
+const getUserOutstandingBalance = (userId: string): number => {
+  return getApprovedLoansByUser(userId).reduce((sum, loan) => sum + getLoanRemainingBalance(loan.id), 0)
+}
+
+const getUserCreditLimit = (userId: string): number => {
+  const approvedLoans = getApprovedLoansByUser(userId)
+  const fullyPaidLoansCount = approvedLoans.filter((loan) => getLoanRemainingBalance(loan.id) === 0).length
+  return INITIAL_CREDIT_LIMIT + fullyPaidLoansCount * CREDIT_LIMIT_INCREMENT
+}
+
+const getUserAvailableCredit = (userId: string): number => {
+  const creditLimit = getUserCreditLimit(userId)
+  const remainingDebt = getUserOutstandingBalance(userId)
+  return Math.max(0, creditLimit - remainingDebt)
+}
+
 // User management
 export const setUser = (user: { id: string; name: string; email: string }) => {
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
@@ -49,6 +72,11 @@ export interface Loan {
 export const addLoan = (loan: Omit<Loan, 'id' | 'date' | 'userId'>) => {
   const user = getUser()
   if (!user) return null
+
+  const availableCredit = getUserAvailableCredit(user.id)
+  if (loan.amount > availableCredit) {
+    return null
+  }
   
   const loans = getAllLoans()
   const newLoan: Loan = {
@@ -87,6 +115,18 @@ export const updateLoanStatus = (loanId: string, status: 'Pending' | 'Approved' 
   const loans = getAllLoans()
   const loan = loans.find(l => l.id === loanId)
   if (loan) {
+    if (status === 'Approved' && loan.status !== 'Approved') {
+      const userAvailableCredit = getUserAvailableCredit(loan.userId)
+      if (loan.amount > userAvailableCredit) {
+        addActivity(`Loan #${loanId} approval blocked — exceeds available credit`)
+        addActivityForUser(
+          loan.userId,
+          `Loan #${loanId} cannot be approved because it exceeds your available credit of ₱${userAvailableCredit.toLocaleString()}`
+        )
+        return
+      }
+    }
+
     const previousStatus = loan.status // Save before modifying
     loan.status = status
     if (paymentMethodId) {
@@ -370,9 +410,16 @@ export const processPayment = (
       return false
     }
 
+    const previousRemaining = getLoanRemainingBalance(loanId)
+    if (previousRemaining <= 0) {
+      return false
+    }
+
+    const paymentAmount = Math.min(amount, previousRemaining)
+
     // Return payment to the same wallet used for disbursement (borrow wallet)
     const disbursementWalletId = loan.paymentMethodId || 'pm-gcash'
-    const credited = addToPaymentMethod(disbursementWalletId, amount)
+    const credited = addToPaymentMethod(disbursementWalletId, paymentAmount)
     if (!credited) {
       return false
     }
@@ -380,7 +427,7 @@ export const processPayment = (
     // Record the payment transaction
     const transaction = addTransaction({
       type: 'Payment',
-      amount,
+      amount: paymentAmount,
       loanId,
       paymentMethodId: disbursementWalletId,
       description: `Payment - ${description} (${paymentMethod})`,
@@ -388,15 +435,21 @@ export const processPayment = (
     })
 
     // Add activity log
-    addActivity(`Made a payment of ₱${amount.toLocaleString()} via ${paymentMethod}`)
+    addActivity(`Made a payment of ₱${paymentAmount.toLocaleString()} via ${paymentMethod}`)
     if (loan.userId) {
       const users = getRegisteredUsers()
       const borrower = users.find(u => u.id === loan.userId)
       const payerName = borrower?.name || 'Customer'
       addActivityForUser(
         ADMIN_CREDENTIALS.id,
-        `${payerName} paid ₱${amount.toLocaleString()} for loan #${loanId}`
+        `${payerName} paid ₱${paymentAmount.toLocaleString()} for loan #${loanId}`
       )
+
+      const remainingAfterPayment = getLoanRemainingBalance(loanId)
+      if (remainingAfterPayment === 0) {
+        addActivity(`Loan #${loanId} is fully paid`)
+        addActivityForUser(ADMIN_CREDENTIALS.id, `${payerName} fully paid loan #${loanId}`)
+      }
     }
 
     return !!transaction
@@ -447,14 +500,30 @@ export const getTotalPayments = (): number => {
     .reduce((sum, t) => sum + t.amount, 0)
 }
 
-// Total amount the bank has already lent to the current user.
+// Total approved loan principal received by current user.
 export const getBorrowedBalance = (): number => {
-  return getTotalDisbursed()
+  return getLoansList()
+    .filter(l => l.status === 'Approved')
+    .reduce((sum, l) => sum + l.amount, 0)
 }
 
-// Remaining debt = borrowed amount - total payments made.
+// Remaining debt is based on each approved loan's live remaining balance.
 export const getOutstandingBalance = (): number => {
-  return Math.max(0, getBorrowedBalance() - getTotalPayments())
+  const user = getUser()
+  if (!user) return 0
+  return getUserOutstandingBalance(user.id)
+}
+
+// Total amount paid toward approved loans (derived from principal - remaining).
+export const getTotalPaidTowardsLoans = (): number => {
+  return Math.max(0, getBorrowedBalance() - getOutstandingBalance())
+}
+
+// Number of approved loans that still have an unpaid balance.
+export const getLoansToPayCount = (): number => {
+  return getLoansList()
+    .filter(l => l.status === 'Approved')
+    .filter(l => getLoanRemainingBalance(l.id) > 0).length
 }
 
 // ====== ADMIN-FACING FINANCIAL METRICS ======
@@ -480,9 +549,10 @@ export const getAdminOutstandingDebt = (): number => {
 
 // Get available credit (fixed amount - total disbursed + total payments)
 export const getAvailableCredit = (): number => {
-  const totalCredit = 100000 // Default available credit
-  const remainingDebt = getOutstandingBalance()
-  return Math.min(totalCredit, Math.max(0, totalCredit - remainingDebt))
+  const user = getUser()
+  if (!user) return INITIAL_CREDIT_LIMIT
+
+  return getUserAvailableCredit(user.id)
 }
 
 // Get active loans

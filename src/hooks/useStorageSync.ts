@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { REALTIME_STORAGE_EVENT } from '../services/realtimeSync'
 
 /**
  * Keeps component state in sync with a localStorage key — across tabs AND within the same tab.
@@ -63,13 +64,24 @@ export function useStorageSync<T>(
         sync()
       }
     }
+
+    // Same-window instant updates from local writes and incoming WebSocket events.
+    const onRealtimeStorage = (e: Event) => {
+      const detail = (e as CustomEvent<{ key?: string }>).detail
+      if (!detail?.key || detail.key === storageKey) {
+        sync()
+      }
+    }
+
     window.addEventListener('storage', onStorage)
+    window.addEventListener(REALTIME_STORAGE_EVENT, onRealtimeStorage)
 
     // Same-tab fallback: poll every pollIntervalMs
     const timer = setInterval(sync, pollIntervalMs)
 
     return () => {
       window.removeEventListener('storage', onStorage)
+      window.removeEventListener(REALTIME_STORAGE_EVENT, onRealtimeStorage)
       clearInterval(timer)
     }
   }, [storageKey, pollIntervalMs, sync])

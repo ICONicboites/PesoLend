@@ -26,7 +26,10 @@ export const AdminSupport = () => {
     () =>
       [...allTickets]
         .filter((t) => t.status !== "Resolved")
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
     [allTickets],
   );
 
@@ -54,7 +57,9 @@ export const AdminSupport = () => {
     setReplyText("");
   };
 
-  const handleStatusChange = (newStatus: "Open" | "In Progress" | "Resolved") => {
+  const handleStatusChange = (
+    newStatus: "Open" | "In Progress" | "Resolved",
+  ) => {
     if (!selectedTicket) return;
     updateTicketStatus(selectedTicket.id, newStatus);
   };
@@ -89,8 +94,12 @@ export const AdminSupport = () => {
             className="card text-center py-16"
           >
             <CheckCircle2 size={48} className="mx-auto mb-4 text-green-500" />
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">No Active Tickets</h2>
-            <p className="text-gray-600 dark:text-gray-400">All support tickets have been resolved.</p>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+              No Active Tickets
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              All support tickets have been resolved.
+            </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -107,7 +116,9 @@ export const AdminSupport = () => {
               animate={{ opacity: 1, x: 0 }}
               className="lg:col-span-1"
             >
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Tickets</h2>
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                Tickets
+              </h2>
               <div className="space-y-2">
                 {tickets.map((ticket) => (
                   <motion.button
@@ -122,17 +133,30 @@ export const AdminSupport = () => {
                   >
                     <div className="flex items-start gap-2">
                       {ticket.status === "Open" && (
-                        <Clock size={16} className="text-yellow-500 mt-1 flex-shrink-0" />
+                        <Clock
+                          size={16}
+                          className="text-yellow-500 mt-1 flex-shrink-0"
+                        />
                       )}
                       {ticket.status === "In Progress" && (
-                        <Clock size={16} className="text-blue-500 mt-1 flex-shrink-0" />
+                        <Clock
+                          size={16}
+                          className="text-blue-500 mt-1 flex-shrink-0"
+                        />
                       )}
                       {ticket.status === "Resolved" && (
-                        <CheckCircle2 size={16} className="text-green-500 mt-1 flex-shrink-0" />
+                        <CheckCircle2
+                          size={16}
+                          className="text-green-500 mt-1 flex-shrink-0"
+                        />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 dark:text-white truncate">{ticket.subject}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ticket.userName}</p>
+                        <p className="font-semibold text-gray-800 dark:text-white truncate">
+                          {ticket.subject}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {ticket.userName}
+                        </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           {new Date(ticket.createdAt).toLocaleDateString()}
                         </p>
@@ -152,86 +176,113 @@ export const AdminSupport = () => {
                 <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{selectedTicket.subject}</h2>
+                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                        {selectedTicket.subject}
+                      </h2>
                       <p className="text-gray-600 dark:text-gray-400 mt-1">
-                        From: {selectedTicket.userName} ({selectedTicket.userEmail})
+                        From: {selectedTicket.userName} (
+                        {selectedTicket.userEmail})
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {(["Open", "In Progress", "Resolved"] as const).map((status) => (
-                        <motion.button
-                          key={status}
-                          onClick={() => handleStatusChange(status)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            selectedTicket.status === status
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                          }`}
-                        >
-                          {status}
-                        </motion.button>
-                      ))}
+                      {(["Open", "In Progress", "Resolved"] as const).map(
+                        (status) => (
+                          <motion.button
+                            key={status}
+                            onClick={() => handleStatusChange(status)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                              selectedTicket.status === status
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                            }`}
+                          >
+                            {status}
+                          </motion.button>
+                        ),
+                      )}
                     </div>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Created: {new Date(selectedTicket.createdAt).toLocaleString()}
+                    Created:{" "}
+                    {new Date(selectedTicket.createdAt).toLocaleString()}
                   </p>
                 </div>
 
                 <div className="mb-6 max-h-96 overflow-y-auto space-y-4">
-                  <div className="flex gap-3">
+                  {/* Initial customer message */}
+                  <div className="flex gap-3 justify-start">
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                         {selectedTicket.userName.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div className="flex-1">
+                    <div className="max-w-[75%]">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-800 dark:text-white">{selectedTicket.userName}</p>
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">
+                          {selectedTicket.userName}
+                        </p>
                         <span className="text-xs text-gray-500">
                           {new Date(selectedTicket.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                        <p className="text-gray-700 dark:text-gray-300">{selectedTicket.message}</p>
+                      <div className="mt-1 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg rounded-tl-none">
+                        <p className="text-gray-700 dark:text-gray-300">
+                          {selectedTicket.message}
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   {selectedTicket.replies.map((reply) => (
-                    <div key={reply.id} className="flex gap-3">
+                    <div
+                      key={reply.id}
+                      className={`flex gap-3 ${reply.from === "admin" ? "justify-end" : "justify-start"}`}
+                    >
+                      {reply.from !== "admin" && (
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                            {selectedTicket.userName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          reply.from === "admin"
-                            ? "bg-green-100 dark:bg-green-900"
-                            : "bg-blue-100 dark:bg-blue-900"
-                        }`}
+                        className={`max-w-[75%] ${reply.from === "admin" ? "items-end" : "items-start"} flex flex-col`}
                       >
-                        <span
-                          className={`text-sm font-bold ${
-                            reply.from === "admin"
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-blue-600 dark:text-blue-400"
-                          }`}
+                        <div
+                          className={`flex items-center gap-2 ${reply.from === "admin" ? "flex-row-reverse" : ""}`}
                         >
-                          {reply.from === "admin" ? "A" : selectedTicket.userName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-gray-800 dark:text-white">
-                            {reply.from === "admin" ? "Admin" : selectedTicket.userName}
+                          <p
+                            className={`font-semibold ${reply.from === "admin" ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"}`}
+                          >
+                            {reply.from === "admin"
+                              ? "Admin"
+                              : selectedTicket.userName}
                           </p>
                           <span className="text-xs text-gray-500">
                             {new Date(reply.timestamp).toLocaleString()}
                           </span>
                         </div>
-                        <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                          <p className="text-gray-700 dark:text-gray-300">{reply.message}</p>
+                        <div
+                          className={`mt-1 p-3 rounded-lg ${
+                            reply.from === "admin"
+                              ? "bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-tr-none"
+                              : "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-tl-none"
+                          }`}
+                        >
+                          <p className="text-gray-700 dark:text-gray-300">
+                            {reply.message}
+                          </p>
                         </div>
                       </div>
+                      {reply.from === "admin" && (
+                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                            A
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
