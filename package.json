@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "realtime": "node scripts/realtime-sync-server.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx"
@@ -17,7 +18,8 @@
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.0.5",
     "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

@@ -1,4 +1,4 @@
-import { getTransactions } from "../services/storage";
+import { getLoanRemainingBalance, getTransactions } from "../services/storage";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useStorageSync } from "../hooks/useStorageSync";
@@ -11,13 +11,39 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   filterType = "All",
 }) => {
   // Live-synced: reflects new payments and disbursements without page refresh
-  const { data: transactions } = useStorageSync("pesolend_transactions", getTransactions, 3000);
+  const { data: transactions } = useStorageSync(
+    "pesolend_transactions",
+    getTransactions,
+    3000,
+  );
 
   const filteredTransactions = transactions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .filter(
       (transaction) => filterType === "All" || transaction.type === filterType,
     );
+
+  const getPaymentNotification = (loanId?: string) => {
+    if (!loanId) {
+      return {
+        text: "Payment recorded for your loan.",
+        tone: "info" as const,
+      };
+    }
+
+    const remaining = getLoanRemainingBalance(loanId);
+    if (remaining === 0) {
+      return {
+        text: `Loan #${loanId} is fully paid.`,
+        tone: "success" as const,
+      };
+    }
+
+    return {
+      text: `You paid your loan. Remaining balance for Loan #${loanId}: ₱${remaining.toLocaleString()}`,
+      tone: "info" as const,
+    };
+  };
 
   return (
     <motion.div
@@ -51,7 +77,10 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
           <tbody>
             {filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                <td
+                  colSpan={4}
+                  className="py-8 text-center text-gray-500 dark:text-gray-400"
+                >
                   No transactions found
                 </td>
               </tr>
@@ -74,7 +103,10 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                         }`}
                       >
                         {transaction.type === "Disbursement" ? (
-                          <ArrowDownRight size={18} className="text-green-600" />
+                          <ArrowDownRight
+                            size={18}
+                            className="text-green-600"
+                          />
                         ) : (
                           <ArrowUpRight size={18} className="text-blue-600" />
                         )}
@@ -90,7 +122,19 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                     </span>
                   </td>
                   <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                    {transaction.description}
+                    <p>{transaction.description}</p>
+                    {transaction.type === "Payment" && (
+                      <p
+                        className={`mt-1 text-xs font-semibold ${
+                          getPaymentNotification(transaction.loanId).tone ===
+                          "success"
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        {getPaymentNotification(transaction.loanId).text}
+                      </p>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-sm">
                     {new Date(transaction.date).toLocaleDateString()}

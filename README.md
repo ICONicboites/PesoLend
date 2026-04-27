@@ -8,30 +8,37 @@ Built with ⚛️ **React + TypeScript**, 🎨 **Tailwind CSS**, and 🎞️ **F
 
 ## 🚀 Latest Progress (April 2026)
 
-### ⚡ Real-Time Cross-Tab Sync
-- Custom `useStorageSync` hook polls localStorage every 3–5 seconds **and** listens to native `storage` events for instant cross-tab updates.
-- All dashboards refresh automatically — no page reload needed.
+### ⚡ Real-Time Cross-Browser Sync (WebSockets)
+
+- A lightweight WebSocket relay server (`scripts/realtime-sync-server.mjs`) broadcasts localStorage updates to all connected clients.
+- Customer loan submissions now appear on admin dashboards instantly, even when both sessions run in different browsers.
+- `useStorageSync` still keeps a storage-event + polling fallback for resilience.
 
 ### 💰 Corrected Financial Money Flow
+
 - ✅ **Approving a loan** deducts funds from the admin's disbursement wallet.
 - ✅ **Customer payment** returns the amount back to that same wallet.
 - 📊 Live metrics: Total Lent Out, Total Collected, Outstanding Debt.
 
 ### 📋 Dual Activity Logging
+
 - Every loan application, approval, rejection, and payment is logged for **both** the customer and the admin.
 - Timestamps use relative formatting (e.g., "Just now", "5m ago").
 
 ### 🛡️ Admin Dashboard Overhaul
+
 - Live stat cards: Pending Loans 🕐, Open Tickets 🎫, System Balance 💳, Total Lent Out 📤, Total Collected 📥, Outstanding Debt ⚠️.
 - 🔔 New-loan alert badge with dismiss button.
 - Recent Activity Log embedded directly in the dashboard.
 
 ### 🔧 Payment Modal Fixes
+
 - Live-synced approved loan list refreshes every 3 seconds.
 - Loan selection persists during sync cycles.
 - Dropdown shows loan description, amount, and duration.
 
 ### 🔍 Transaction Table — Loan Identification
+
 - Admin transaction table now has a **Description** column so admins know exactly what each transaction is for.
 - Clicking **View** on any payment opens a detail modal showing:
   - 📝 Loan description & duration
@@ -44,28 +51,28 @@ Built with ⚛️ **React + TypeScript**, 🎨 **Tailwind CSS**, and 🎞️ **F
 
 ### 👤 Customer Side
 
-| Feature | Description |
-|---|---|
-| 📝 Registration & Login | Email/password auth stored in localStorage |
-| 📊 Dashboard | Summary cards, quick actions, recent transactions, activity log |
-| 💸 Loan Application | Apply with amount, duration (months), and description |
-| 🔎 Loan Tracking | Filter by All / Pending / Approved / Rejected |
-| 💳 Payment Processing | Pay approved loans via saved payment method |
-| 📈 Transaction History | Full history with type, amount, date, and status |
-| 🎫 Support Tickets | Submit and track support requests |
-| 👤 Profile Management | View and update profile details |
-| 🌙 Dark Mode | Toggle-able dark theme, persisted in localStorage |
+| Feature                 | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| 📝 Registration & Login | Email/password auth stored in localStorage                      |
+| 📊 Dashboard            | Summary cards, quick actions, recent transactions, activity log |
+| 💸 Loan Application     | Apply with amount, duration (months), and description           |
+| 🔎 Loan Tracking        | Filter by All / Pending / Approved / Rejected                   |
+| 💳 Payment Processing   | Pay approved loans via saved payment method                     |
+| 📈 Transaction History  | Full history with type, amount, date, and status                |
+| 🎫 Support Tickets      | Submit and track support requests                               |
+| 👤 Profile Management   | View and update profile details                                 |
+| 🌙 Dark Mode            | Toggle-able dark theme, persisted in localStorage               |
 
 ### 🛡️ Admin Side
 
-| Feature | Description |
-|---|---|
-| 📊 Admin Dashboard | Live metrics — balance, loans, collections, outstanding debt |
-| ✅ Loan Management | Review, approve, or reject pending loans |
-| 💳 Balance Management | Manage payment methods; view transactions with description and remaining balance |
-| 🗂️ Transaction Audit Log | Full audit trail of every financial event |
-| 🎫 Support Management | View and respond to customer support tickets |
-| 🔔 Activity Log | Live feed of all system activity |
+| Feature                  | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| 📊 Admin Dashboard       | Live metrics — balance, loans, collections, outstanding debt                     |
+| ✅ Loan Management       | Review, approve, or reject pending loans                                         |
+| 💳 Balance Management    | Manage payment methods; view transactions with description and remaining balance |
+| 🗂️ Transaction Audit Log | Full audit trail of every financial event                                        |
+| 🎫 Support Management    | View and respond to customer support tickets                                     |
+| 🔔 Activity Log          | Live feed of all system activity                                                 |
 
 ---
 
@@ -177,30 +184,36 @@ Built with ⚛️ **React + TypeScript**, 🎨 **Tailwind CSS**, and 🎞️ **F
 ## ⚙️ How It Works
 
 ### 💾 Data Layer
+
 All data is persisted in **localStorage** under namespaced keys:
 
-| 🗝️ Key | 📦 Data |
-|---|---|
-| `pesolend_user` | 👤 Currently logged-in user session |
-| `pesolend_registered_users` | 👥 All registered customer accounts |
-| `pesolend_loans` | 💸 All loan records |
-| `pesolend_transactions` | 💳 All financial transactions |
-| `pesolend_activities` | 🔔 Activity log entries per user |
-| `pesolend_support_tickets` | 🎫 Customer support tickets |
-| `pesolend_payment_methods` | 🏦 Admin payment methods (GCash, bank, etc.) |
+| 🗝️ Key                      | 📦 Data                                      |
+| --------------------------- | -------------------------------------------- |
+| `pesolend_user`             | 👤 Currently logged-in user session          |
+| `pesolend_registered_users` | 👥 All registered customer accounts          |
+| `pesolend_loans`            | 💸 All loan records                          |
+| `pesolend_transactions`     | 💳 All financial transactions                |
+| `pesolend_activities`       | 🔔 Activity log entries per user             |
+| `pesolend_support_tickets`  | 🎫 Customer support tickets                  |
+| `pesolend_payment_methods`  | 🏦 Admin payment methods (GCash, bank, etc.) |
 
 ### ⚡ Real-Time Sync
-The `useStorageSync` hook:
-1. 👂 Listens to the browser's native `storage` event for cross-tab changes.
-2. ⏱️ Polls every N milliseconds (configurable) for same-tab updates.
-3. 📬 Returns `{ data, newCount, clearAlert }` — components get fresh data and badge counts automatically.
+
+The app combines a WebSocket bridge and `useStorageSync`:
+
+1. 📡 `src/services/realtimeSync.ts` patches localStorage writes for `pesolend_*` keys.
+2. 🌐 Writes are broadcast via WebSocket (`ws://localhost:8787` by default).
+3. 📥 Other browser sessions apply incoming updates locally and emit an immediate sync event.
+4. ⏱️ `useStorageSync` still listens to `storage` events + polling as a fallback safety net.
 
 ### 💰 Financial Logic (`storage.ts`)
+
 - `updateLoanStatus(loanId, 'Approved', paymentMethodId)` → 📤 Deducts from payment method, logs Disbursement.
 - `processPayment(amount, loanId, paymentMethod, description)` → 📥 Adds to payment method, logs Payment.
 - `getLoanRemainingBalance(loanId)` → 📉 Original loan amount minus all approved payments for that loan.
 
 ### 🔒 Route Protection
+
 - `<ProtectedRoute>` — redirects to `/login` if no session exists.
 - `<AdminRoute>` — redirects to `/dashboard` if user is not admin.
 
@@ -208,15 +221,15 @@ The `useStorageSync` hook:
 
 ## 🛠️ Tech Stack
 
-| 🔧 Technology | 📋 Purpose |
-|---|---|
+| 🔧 Technology            | 📋 Purpose                    |
+| ------------------------ | ----------------------------- |
 | ⚛️ React 18 + TypeScript | UI framework with type safety |
-| ⚡ Vite | Build tool & dev server |
-| 🎨 Tailwind CSS | Utility-first styling |
-| 🎞️ Framer Motion | Animations & transitions |
-| 🔀 React Router DOM v6 | Client-side routing |
-| 🖼️ Lucide React | Icon library |
-| 💾 localStorage API | Client-side data persistence |
+| ⚡ Vite                  | Build tool & dev server       |
+| 🎨 Tailwind CSS          | Utility-first styling         |
+| 🎞️ Framer Motion         | Animations & transitions      |
+| 🔀 React Router DOM v6   | Client-side routing           |
+| 🖼️ Lucide React          | Icon library                  |
+| 💾 localStorage API      | Client-side data persistence  |
 
 ---
 
@@ -225,6 +238,9 @@ The `useStorageSync` hook:
 ```bash
 # 📦 Install dependencies
 npm install
+
+# 📡 Start realtime WebSocket relay (separate terminal)
+npm run realtime
 
 # 🚀 Start development server
 npm run dev
@@ -238,14 +254,20 @@ npm run preview
 
 > App runs at **http://localhost:5173**
 
+Optional environment variable for custom WebSocket URL:
+
+```bash
+VITE_REALTIME_WS_URL=ws://localhost:8787
+```
+
 ---
 
 ## 🔑 Admin Login
 
-| Field | Value |
-|---|---|
-| 📧 Email | `admin@pesolend.com` |
-| 🔒 Password | `rivera6969` |
+| Field       | Value                |
+| ----------- | -------------------- |
+| 📧 Email    | `admin@pesolend.com` |
+| 🔒 Password | `rivera6969`         |
 
 ---
 
@@ -253,12 +275,12 @@ npm run preview
 
 Fully responsive across all screen sizes:
 
-| Device | Breakpoint |
-|---|---|
-| 📱 Mobile | 320px+ |
-| 📟 Tablet | 768px+ |
-| 🖥️ Desktop | 1024px+ |
-| 🖥️ Large screens | 1280px+ |
+| Device           | Breakpoint |
+| ---------------- | ---------- |
+| 📱 Mobile        | 320px+     |
+| 📟 Tablet        | 768px+     |
+| 🖥️ Desktop       | 1024px+    |
+| 🖥️ Large screens | 1280px+    |
 
 ---
 

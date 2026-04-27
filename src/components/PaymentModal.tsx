@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, CreditCard, Wallet, Building2 } from "lucide-react";
-import { processPayment, getLoansList, Loan } from "../services/storage";
+import {
+  processPayment,
+  getLoansList,
+  getLoanRemainingBalance,
+} from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 
 interface PaymentModalProps {
@@ -29,9 +33,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   // Live-sync approved loans so new loans appear immediately
   const { data: approvedLoans } = useStorageSync(
     "pesolend_loans",
-    () => getLoansList().filter(l => l.status === 'Approved'),
-    3000
+    () =>
+      getLoansList().filter(
+        (l) => l.status === "Approved" && getLoanRemainingBalance(l.id) > 0,
+      ),
+    3000,
   );
+
+  const hasPayableLoans = approvedLoans.length > 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -46,8 +55,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setFormData((prev) => {
+      const selectedLoanStillExists = approvedLoans.some(
+        (loan) => loan.id === prev.loanId,
+      );
+
+      if (selectedLoanStillExists) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        loanId: approvedLoans.length > 0 ? approvedLoans[0].id : "",
+      };
+    });
+  }, [approvedLoans, isOpen]);
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -73,14 +103,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       return;
     }
 
-    if (amount < 1000) {
-      setError("Minimum payment amount is ₱1,000");
+    if (!formData.loanId) {
+      setError("Please select a loan");
       setLoading(false);
       return;
     }
 
-    if (!formData.loanId) {
-      setError("Please select a loan");
+    if (!hasPayableLoans) {
+      setError("No unpaid approved loans available");
       setLoading(false);
       return;
     }
@@ -104,7 +134,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         amount,
         formData.loanId,
         formData.paymentMethod,
-        formData.description || "Monthly payment"
+        formData.description || "Monthly payment",
       );
 
       if (success) {
@@ -160,7 +190,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             whileTap={{ scale: 0.95 }}
             onClick={onClose}
           >
-            <X size={24} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" />
+            <X
+              size={24}
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            />
           </motion.button>
         </div>
 
@@ -203,15 +236,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 name="loanId"
                 value={formData.loanId}
                 onChange={handleChange}
+                disabled={!hasPayableLoans}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-gray-800 dark:text-white"
               >
                 <option value="">Choose a loan</option>
                 {approvedLoans.map((loan) => (
                   <option key={loan.id} value={loan.id}>
-                    {loan.description} - ₱{loan.amount.toLocaleString()} ({loan.duration}mo)
+                    {loan.description} - ₱{loan.amount.toLocaleString()} (
+                    {loan.duration}mo)
                   </option>
                 ))}
               </select>
+              {!hasPayableLoans && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  You have no unpaid approved loans.
+                </p>
+              )}
             </div>
 
             {/* Payment Amount */}
@@ -228,15 +268,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
-                  placeholder="Enter amount (minimum ₱1,000)"
-                  min="1000"
-                  step="1000"
+                  placeholder="Enter amount"
+                  min="1"
+                  step="1"
                   className="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-gray-800 dark:text-white"
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Increments of ₱1,000
-              </p>
             </div>
 
             {/* Payment Method */}
@@ -267,7 +304,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                         className="w-4 h-4 accent-amber-500"
                       />
                       <IconComponent size={16} className="text-amber-500" />
-                      <span className="text-xs font-medium">{method.label}</span>
+                      <span className="text-xs font-medium">
+                        {method.label}
+                      </span>
                     </motion.label>
                   );
                 })}
@@ -316,7 +355,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                disabled={loading}
+                disabled={loading || !hasPayableLoans}
                 className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (

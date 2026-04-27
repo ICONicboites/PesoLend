@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { X, CheckCircle2 } from "lucide-react";
-import { addLoan } from "../services/storage";
+import { addLoan, getAvailableCredit } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 
 interface LoanApplicationModalProps {
   isOpen: boolean;
@@ -14,6 +15,12 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { data: availableCredit } = useStorageSync(
+    "pesolend_transactions",
+    getAvailableCredit,
+    3000,
+  );
+
   const [formData, setFormData] = useState({
     amount: "",
     duration: "",
@@ -49,13 +56,20 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
       return;
     }
 
+    if (amount > availableCredit) {
+      setError(
+        `Maximum available credit is ₱${availableCredit.toLocaleString()}`,
+      );
+      return;
+    }
+
     const duration = parseInt(formData.duration);
     if (duration < 1 || duration > 60) {
       setError("Duration must be between 1 and 60 months");
       return;
     }
 
-    addLoan({
+    const createdLoan = addLoan({
       amount: amount,
       duration: duration,
       status: "Pending",
@@ -63,10 +77,20 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
       paymentMethodId: formData.paymentMethodId,
     });
 
+    if (!createdLoan) {
+      setError("Loan exceeds your current available credit");
+      return;
+    }
+
     setSubmittedAmount(amount);
     setSuccess(true);
-    setFormData({ amount: "", duration: "", description: "", paymentMethodId: "pm-gcash" });
-    
+    setFormData({
+      amount: "",
+      duration: "",
+      description: "",
+      paymentMethodId: "pm-gcash",
+    });
+
     setTimeout(() => {
       setSuccess(false);
       onSubmit();
@@ -100,7 +124,11 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
               transition={{ type: "spring", delay: 0.2 }}
               className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
             >
-              <CheckCircle2 size={48} className="text-white" strokeWidth={1.5} />
+              <CheckCircle2
+                size={48}
+                className="text-white"
+                strokeWidth={1.5}
+              />
             </motion.div>
 
             <motion.h3
@@ -141,7 +169,10 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
               transition={{ delay: 0.6 }}
               className="text-xs text-gray-500 dark:text-gray-500"
             >
-              Status: <span className="font-semibold text-yellow-600 dark:text-yellow-400">Pending Approval</span>
+              Status:{" "}
+              <span className="font-semibold text-yellow-600 dark:text-yellow-400">
+                Pending Approval
+              </span>
             </motion.p>
           </motion.div>
         ) : (
@@ -155,7 +186,10 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
                 whileTap={{ scale: 0.95 }}
                 onClick={onClose}
               >
-                <X size={24} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" />
+                <X
+                  size={24}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                />
               </motion.button>
             </div>
 
@@ -172,10 +206,13 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-gray-800 dark:text-white"
                   placeholder="50000"
                   min="1000"
-                  step="1000"
+                  step="1"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Minimum: ₱1,000 (Increments of ₱1,000)
+                  Minimum: ₱1,000
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                  Available now: ₱{availableCredit.toLocaleString()}
                 </p>
               </div>
 
@@ -218,20 +255,22 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'pm-gcash', label: 'GCash', icon: '₱' },
-                    { id: 'pm-bank', label: 'Bank', icon: '🏦' },
-                    { id: 'pm-paypal', label: 'PayPal', icon: '₱' },
+                    { id: "pm-gcash", label: "GCash", icon: "₱" },
+                    { id: "pm-bank", label: "Bank", icon: "🏦" },
+                    { id: "pm-paypal", label: "PayPal", icon: "₱" },
                   ].map((method) => (
                     <motion.button
                       key={method.id}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       type="button"
-                      onClick={() => setFormData({ ...formData, paymentMethodId: method.id })}
+                      onClick={() =>
+                        setFormData({ ...formData, paymentMethodId: method.id })
+                      }
                       className={`p-3 rounded-lg border-2 transition-all text-center ${
                         formData.paymentMethodId === method.id
-                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-amber-300'
+                          ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                          : "border-gray-300 dark:border-gray-600 hover:border-amber-300"
                       }`}
                     >
                       <div className="text-lg mb-1">{method.icon}</div>
@@ -267,9 +306,12 @@ export const LoanApplicationModal: React.FC<LoanApplicationModalProps> = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
+                  disabled={availableCredit <= 0}
                   className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors"
                 >
-                  Submit Application
+                  {availableCredit <= 0
+                    ? "Credit Limit Reached"
+                    : "Submit Application"}
                 </motion.button>
               </div>
             </form>

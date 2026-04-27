@@ -4,7 +4,13 @@ import { TransactionHistory } from "../components/TransactionHistory";
 import { BottomNavigation } from "../components/BottomNavigation";
 import { motion } from "framer-motion";
 import { Download } from "lucide-react";
-import { getUser, getTransactions } from "../services/storage";
+import {
+  getUser,
+  getTransactions,
+  getBorrowedBalance,
+  getTotalPaidTowardsLoans,
+  getOutstandingBalance,
+} from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 
 const TransactionsPage: React.FC = () => {
@@ -14,15 +20,27 @@ const TransactionsPage: React.FC = () => {
   >("All");
 
   // Live-synced: auto-updates when new transactions are recorded
-  const { data: transactions } = useStorageSync("pesolend_transactions", getTransactions, 3000);
+  const { data: transactions } = useStorageSync(
+    "pesolend_transactions",
+    getTransactions,
+    3000,
+  );
+  const { data: totalCashReceived } = useStorageSync(
+    "pesolend_loans",
+    getBorrowedBalance,
+    3000,
+  );
+  const { data: totalPaidAmount } = useStorageSync(
+    "pesolend_transactions",
+    getTotalPaidTowardsLoans,
+    3000,
+  );
+  const { data: outstandingBalance } = useStorageSync(
+    "pesolend_transactions",
+    getOutstandingBalance,
+    3000,
+  );
   const totalTransactions = transactions.length;
-  const totalDisbursedAmount = transactions
-    .filter((t) => t.type === "Disbursement")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalPaidAmount = transactions
-    .filter((t) => t.type === "Payment")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const outstandingBalance = Math.max(0, totalDisbursedAmount - totalPaidAmount);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32">
@@ -100,10 +118,10 @@ const TransactionsPage: React.FC = () => {
           </div>
           <div className="card">
             <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
-              Total Disbursed
+              Total Cash Received
             </p>
             <h3 className="text-3xl font-bold text-green-600">
-              ₱{totalDisbursedAmount.toLocaleString()}
+              ₱{totalCashReceived.toLocaleString()}
             </h3>
           </div>
           <div className="card">
